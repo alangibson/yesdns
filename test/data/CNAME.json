@@ -1,0 +1,26 @@
+{
+  "question": [
+    {
+      "qname": "some.domain.",
+      "qtype": 5,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "some.domain.",
+      "type": 5,
+      "class": 1,
+      "ttl": 10,
+      "rdata": "www.some.domain."
+    }
+  ],
+  "ns": [
+    {
+      "name": "some.domain.",
+      "type": 2,
+      "class": 1,
+      "rdata": "ns1.some.domain."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "question": [
+    {
+      "qname": "some.domain.",
+      "qtype": 16,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "some.domain.",
+      "type": 16,
+      "class": 1,
+      "ttl": 10,
+      "rdata": [
+        "Text line 1 of 2",
+        "Text line 2 of 2"
+      ]
+    }
+  ]
+}

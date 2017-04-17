@@ -1,0 +1,23 @@
+{
+  "question": [
+    {
+      "qname": "_http._tcp.some.domain.",
+      "qtype": 33,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "_http._tcp.some.domain.",
+      "type": 33,
+      "class": 1,
+      "ttl": 10,
+      "rdata": {
+        "priority": 1,
+        "weight": 1,
+        "port": 80,
+        "target": "www.some.domain."
+      }
+    }
+  ]
+}
