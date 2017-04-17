@@ -1,7 +1,7 @@
 YesDNS
 ======
 
-A DNS server that does what it's told
+YesDNS is a DNS server that does what it's told.
 
 YesDNS responds to DNS queries with DNS messages provided to it by a REST interface. It returns only what you tell it to, and absolutely anything you tell it to, (mostly) without modificaiton.
 
@@ -12,7 +12,7 @@ Usage
 
 Run
 
-    git clone
+    git clone https://github.com/alangibson/yesdns.git
     cd yesdns/src
     go build && ./yesdns &
     curl -v -X PUT -d@../../test/data/PTR.json localhost:8080/v1/message
