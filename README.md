@@ -1,7 +1,11 @@
 YesDNS
 ======
 
-A DNS server that does what it's told.
+A DNS server that does what it's told
+
+YesDNS responds to DNS queries with DNS messages provided to it by a REST interface. It returns only what you tell it to, and absolutely anything you tell it to, (mostly) without modificaiton.
+
+YesDNS is intended for testing and quickly standing up ephemeral environments.
 
 Usage
 -----
@@ -41,14 +45,14 @@ Output
     ;; WHEN: Mon Apr 17 18:57:51 CEST 2017
     ;; MSG SIZE  rcvd: 155
 
+Limitations
+-----------
+
+- No recursion support
+- No DNSSEC support (yet)
+- No zone transfer support (yet)
+
 References
 ----------
 
 DNS Messages: http://www.zytrax.com/books/dns/ch15/
-
-Limitations
------------
-
-- YesDNS is dumb. It returns only what you tell it to, and absolutely anything you tell it to, via the REST interface.
-- No DNSSEC support (yet)
-- No zone transfer support (yet)
