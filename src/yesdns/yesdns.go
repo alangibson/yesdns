@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"flag"
 	"github.com/miekg/dns"
 	"time"
 	"os"
@@ -16,6 +17,10 @@ import (
 	"net"
 	"strconv"
 )
+
+//
+// REST API messages
+//
 
 type DnsHeader struct {
 	Id                 uint16
@@ -53,12 +58,67 @@ type DnsMessage struct {
 	Extra    []DnsRR
 }
 
-func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
-	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
+//
+// Database interface
+//
 
-		// Initialize response message and set header flags
-		dnsMsg := new(dns.Msg)
-		// TODO m.Compress = *compress
+type Database struct {
+	db	*scribble.Driver
+}
+
+func NewDatabase(scribbleDbDir string) (error, *Database) {
+	db, err := scribble.New(scribbleDbDir, nil)
+	if err != nil {
+		return err, nil
+	}
+	database := Database{db: db}
+	return nil, &database
+}
+
+func (d Database) Write(dnsRecord DnsMessage) error {
+	log.Printf("Saving %s to db\n", dnsRecord)
+	// We have 1 document in the db for every entry in Question section
+	for _, question := range dnsRecord.Question {
+		err := d.db.Write(strconv.Itoa(int(question.Qtype)), question.Qname, dnsRecord)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d Database) Read(dnsRecord DnsMessage) (error, DnsMessage) {
+	log.Printf("Querying DNS Record %s\n", dnsRecord)
+	// TODO Need to support > 1 question
+	question := dnsRecord.Question[0]
+	returnDnsRecord := DnsMessage{}
+	err := d.db.Read(strconv.Itoa(int(question.Qtype)), question.Qname, &returnDnsRecord)
+	if err == nil {
+		returnDnsRecord.MsgHdr.Rcode = dns.RcodeSuccess
+	} else {
+		log.Printf("Could not find record. %s\n", err)
+		returnDnsRecord.MsgHdr.Rcode = dns.RcodeNameError
+	}
+	log.Printf("Responding to DNS Record query with %s\n", returnDnsRecord)
+	return err, returnDnsRecord
+}
+
+func (d Database) Delete(dnsRecord DnsMessage) error {
+	log.Printf("Deleting DNS Record %s\n", dnsRecord)
+	// TODO Need to support > 1 question
+	question := dnsRecord.Question[0]
+	err := d.db.Delete(strconv.Itoa(int(question.Qtype)), question.Qname)
+	return err
+}
+
+//
+// Server Functions
+//
+
+// DNS query handler.
+// We use a closure to maintain a reference to the database.
+func handleDnsQuery(database *Database) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
+	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
 		// TODO Dont assume only 1 question. Query db once for every question
 		queryDomain := requestDnsMsg.Question[0].Name
@@ -71,12 +131,16 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 		dnsQuery := DnsQuestion{Qname: queryDomain, Qtype: qtype}
 		queryDnsRecord := DnsMessage{Question: []DnsQuestion{dnsQuery}}
 		log.Printf("Querying for record: %s\n", queryDnsRecord)
-		queryChannel <- queryDnsRecord
+		err, answerDnsMessage := database.Read(queryDnsRecord)
+		if err != nil {
+			log.Printf("Error querying for record: %s. Error was: %s\n", queryDnsRecord, err)
+			// TODO handle error. answerDnsMessage should already be RcodeNameError
+		}
 
-		// Wait for query to be answered
-		log.Printf("Waiting for response to query: %s\n", queryDnsRecord)
-		answerDnsMessage := <- queryChannel
-
+		// Initialize response message and set header flags
+		// TODO dont use new, use composite literal instead
+		dnsMsg := new(dns.Msg)
+		// TODO m.Compress = *compress
 		// Build up response message Header
 		dnsMsg.Rcode = answerDnsMessage.MsgHdr.Rcode
 		dnsMsg.Id = requestDnsMsg.Id
@@ -85,7 +149,6 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 		dnsMsg.Opcode = dns.OpcodeQuery
 		// We default to Success, but this can change
 		dnsMsg.Rcode = dns.RcodeSuccess
-		// TODO support recursion (one day)
 		dnsMsg.RecursionAvailable = false
 		// Build response Question section
 		for _, questionSection := range answerDnsMessage.Question {
@@ -95,7 +158,6 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 		// Build response Answer section
 		for _, rrSection := range answerDnsMessage.Answer {
 			switch rrSection.Type {
-			// TODO Support SOA records
 			case dns.TypeA:
 				dnsRR := &dns.A{
 					Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
@@ -126,6 +188,19 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 					Ptr: rrSection.Rdata.(string),
 				}
 				dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			case dns.TypeSOA:
+				rdataMap := rrSection.Rdata.(map[string]interface{})
+				dnsRR := &dns.SOA{
+					Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+					Ns: rdataMap["ns"].(string),
+					Mbox: rdataMap["mbox"].(string),
+					Serial: uint32(rdataMap["serial"].(float64)),
+					Refresh: uint32(rdataMap["refresh"].(float64)),
+					Retry: uint32(rdataMap["retry"].(float64)),
+					Expire: uint32(rdataMap["expire"].(float64)),
+					Minttl: uint32(rdataMap["minttl"].(float64)),
+				}
+				dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
 			case dns.TypeSRV:
 				rdataMap := rrSection.Rdata.(map[string]interface{})
 				dnsRR := &dns.SRV{
@@ -148,7 +223,6 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 				}
 				dnsMsg.Answer = append(dnsMsg.Answer, dnsTXT)
 				// TODO? dnsMsg.Extra = append(dnsMsg.Extra, dnsRR)
-
 			default:
 				log.Printf("Cant build Answer section for type: %s.\n", rrSection.Type)
 				// TODO return error to client?
@@ -197,6 +271,12 @@ func handleDbDnsQuery(queryChannel chan DnsMessage) func (dnsResponseWriter dns.
 	}
 }
 
+// Runs DNS server forever.
+//
+// net: (string) "tcp" or "udp"
+// listenAddr: (string) ip addr and port to listen on
+// name: (string) DNSSEC  name.
+// secret: (string) DNSSEC TSIG.
 func serveDns(net, listenAddr, name, secret string) {
 	log.Printf("Starting listener on %s %s\n", net, listenAddr)
 	switch name {
@@ -213,77 +293,49 @@ func serveDns(net, listenAddr, name, secret string) {
 	}
 }
 
-func serveDb(scribbleDbDir string, saveChannel chan DnsMessage, queryChannel chan DnsMessage, deleteChannel chan DnsMessage) {
-	// Start up scribble db
-	db, err := scribble.New(scribbleDbDir, nil)
-	if err != nil {
-		log.Println("Error", err)
-		return
-	}
-	for { // Loop forever over select statement
-		select {
-		case dnsRecord := <- saveChannel:
-			log.Printf("Saving %s to db\n", dnsRecord)
-			// We have 1 document in the db for every entry in Question section
-			for _, question := range dnsRecord.Question {
-				err := db.Write(strconv.Itoa(int(question.Qtype)), question.Qname, dnsRecord)
-				if err != nil {
-					fmt.Printf("%s\n", err)
-				}
-			}
-			// TODO respond with something
-		case dnsRecord := <- queryChannel:
-			log.Printf("Querying DNS Record %s\n", dnsRecord)
-			// TODO Need to support > 1 question
-			question := dnsRecord.Question[0]
-			returnDnsRecord := DnsMessage{}
-			if err := db.Read(strconv.Itoa(int(question.Qtype)), question.Qname, &returnDnsRecord); err == nil {
-				returnDnsRecord.MsgHdr.Rcode = dns.RcodeSuccess
-			} else {
-				log.Printf("Could not find record. %s\n", err)
-				returnDnsRecord.MsgHdr.Rcode = dns.RcodeNameError
-			}
-			log.Printf("Responding to DNS Record query with %s\n", returnDnsRecord)
-			queryChannel <- returnDnsRecord
-		case dnsRecord := <- deleteChannel:
-			log.Printf("Deleting DNS Record %s\n", dnsRecord)
-			question := dnsRecord.Question[0]
-			db.Delete(strconv.Itoa(int(question.Qtype)), question.Qname)
-			deleteChannel <- dnsRecord
-		}
-	}
-}
-
-func serveRestApi(httpListenAddr string, saveChannel chan DnsMessage, deleteChannel chan DnsMessage) {
+// Runs REST API HTTP server forever.
+//
+// httpListenAddr: (string) interface and port to listen on
+// database: (*Database) Reference to local database that stores DNS records.
+func serveRestApi(httpListenAddr string, database *Database) {
 	log.Printf("Starting REST API listener on %s\n", httpListenAddr)
 	http.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut {
 			if r.Body == nil {
 				http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+				return
 			}
 			var dnsRecord DnsMessage
 			if err := json.NewDecoder(r.Body).Decode(&dnsRecord); err != nil {
 				log.Println(err)
-				http.Error(w, err.Error(), 400)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// TODO validate dnsRecord
 			log.Printf("Saving %s\n", dnsRecord)
-			saveChannel <- dnsRecord
-			// TODO read something and check status
+			if err := database.Write(dnsRecord); err != nil {
+				log.Printf("Error saving %s. Error was: %s\n", dnsRecord, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			// TODO return 204 No content
 		} else if r.Method == http.MethodDelete {
 			if r.Body == nil {
 				http.Error(w, "Empty body not allowed", http.StatusBadRequest)
+				return
 			}
 			var dnsRecord DnsMessage
 			if err := json.NewDecoder(r.Body).Decode(&dnsRecord); err != nil {
 				log.Println(err)
-				http.Error(w, err.Error(), 400)
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// TODO validate dnsRecord
-			deleteChannel <- dnsRecord
-			// TODO check response: deleteResponse := <- deleteChannel
+			if err := database.Delete(dnsRecord); err != nil {
+				log.Printf("Error deleting %s. Error was: %s\n", dnsRecord, err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			// TODO Return 204 No Content
 		} else {
 			msg := fmt.Sprintf("Method %s not allowed for /v1/record\n", r.Method)
@@ -296,29 +348,43 @@ func serveRestApi(httpListenAddr string, saveChannel chan DnsMessage, deleteChan
 }
 
 func main() {
-	// User parameters
-	var name, secret string
-	dnsListenAddr := ":8053"
-	httpListenAddr := ":8080"
-	scribbleDbDir := "./db/v1"
+	// User-provided parameters
+	var tsigName, tsigSecret string
+	// Via environment variables
+	dnsListenTcp, ok := os.LookupEnv("YESDNS_DNS_LISTEN_TCP")
+	if ! ok { dnsListenTcp = "0.0.0.0:8053" }
+	dnsListenUdp, ok := os.LookupEnv("YESDNS_DNS_LISTEN_UDP")
+	if ! ok { dnsListenUdp = "0.0.0.0:8053" }
+	httpListen, ok := os.LookupEnv("YESDNS_HTTP_LISTEN")
+	if ! ok { httpListen = "0.0.0.0:8080" }
+	dbDir, ok := os.LookupEnv("YESDNS_DB_DIR")
+	if ! ok { dbDir = "./db/v1" }
+	// Via command line
+	dnsListenTcp = *flag.String("dns-listen-tcp", dnsListenTcp, "IP address and TCP port to serve DNS on. Also env var YESDNS_DNS_LISTEN_TCP")
+	dnsListenUdp = *flag.String("dns-listen-udp", dnsListenUdp, "IP address and UDP port to serve DNS on. Also env var YESDNS_DNS_LISTEN_UDP")
+	httpListen = *flag.String("http-listen", httpListen, "IP address and TCP port to serve HTTP on. Also env var YESDNS_HTTP_LISTEN")
+	dbDir = *flag.String("db-dir", dbDir, "Directory to store Scribble database in. Also env var YESDNS_DB_DIR")
+	flag.Parse()
 
-	queryChannel := make(chan DnsMessage)
-	saveChannel := make(chan DnsMessage)
-	deleteChannel := make(chan DnsMessage)
+	// Initialize database
+	// TODO Possible traversal attack via dbDir?
+	err, database := NewDatabase(dbDir)
+	if err != nil {
+		log.Printf("Could not open database %s\n", dbDir)
+		return
+	}
 
 	// Register DNS query handler
-	dns.HandleFunc(".", handleDbDnsQuery(queryChannel) )
-
-	// Start up the database
-	go serveDb(scribbleDbDir, saveChannel, queryChannel, deleteChannel)
+	dns.HandleFunc(".", handleDnsQuery(database) )
 
 	// Start up DNS listeners
-	go serveDns("tcp", dnsListenAddr, name, secret)
-	go serveDns("udp", dnsListenAddr, name, secret)
+	go serveDns("tcp", dnsListenTcp, tsigName, tsigSecret)
+	go serveDns("udp", dnsListenUdp, tsigName, tsigSecret)
 
 	// Start up REST API
-	go serveRestApi(httpListenAddr, saveChannel, deleteChannel)
+	go serveRestApi(httpListen, database)
 
+	// Wait for process to be stopped by user
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	log.Println("Waiting forever for SIGINT OR SIGTERM")
