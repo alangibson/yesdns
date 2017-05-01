@@ -1,0 +1,26 @@
+{
+  "question": [
+    {
+      "qname": "some.domain.",
+      "qtype": 6,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "some.domain.",
+      "type": 6,
+      "class": 1,
+      "ttl": 10,
+      "rdata": {
+        "ns": "ns1.some.domain.",
+        "mbox": "hostname.some.domain.",
+        "serial": 1,
+        "refresh": 1,
+        "retry": 1,
+        "expire": 1209600,
+        "minttl": 1
+      }
+    }
+  ]
+}

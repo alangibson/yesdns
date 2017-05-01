@@ -1,0 +1,16 @@
+{
+  "pattern": ".",
+  "store": {
+    "type": "scribble"
+  },
+  "listeners": [
+    {
+      "net": "tcp",
+      "address": ":8053"
+    },
+    {
+      "net": "udp",
+      "address": ":8053"
+    }
+  ]
+}
