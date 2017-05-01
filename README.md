@@ -1,11 +1,13 @@
 YesDNS
 ======
 
-YesDNS is a DNS server that does what it's told.
+YesDNS is an obsequious DNS server that tells you exactly want you want to hear.
 
-YesDNS responds to DNS queries with DNS messages provided to it by a REST interface. It returns only what you tell it to, and absolutely anything you tell it to, (mostly) without modificaiton.
+YesDNS responds to DNS queries with DNS messages provided to it by a REST interface. It returns only what you tell it to, and absolutely anything you tell it to, without modificaiton.
 
 YesDNS is intended for testing and quickly standing up ephemeral environments.
+
+YesDNS does not yet implement any sort of security. DO NOT expose YesDNS to the outside world.
 
 Usage
 -----
@@ -15,7 +17,7 @@ Run
     git clone https://github.com/alangibson/yesdns.git
     cd yesdns/src
     go build && ./yesdns &
-    curl -v -X PUT -d@../../test/data/PTR.json localhost:8080/v1/message
+    curl -v -X PUT -d@../../test/data/A.json localhost:8080/v1/message
     dig @localhost -p 8053 some.domain. A
 
 Output
@@ -45,10 +47,16 @@ Output
     ;; WHEN: Mon Apr 17 18:57:51 CEST 2017
     ;; MSG SIZE  rcvd: 155
 
-Limitations
------------
+Testing
+-------
 
-- No recursion support
+    ./test/test.sh
+
+Caveats
+-------
+
+- No REST API security (yet)
+- No recursion support (yet)
 - No DNSSEC support (yet)
 - No zone transfer support (yet)
 
