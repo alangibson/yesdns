@@ -1,4 +1,7 @@
 {
+  "resolvers": [
+    "resolver-0.0.0.0:8056"
+  ],
   "question": [
     {
       "qname": "some.domain.",

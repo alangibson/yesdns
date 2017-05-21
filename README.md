@@ -57,8 +57,13 @@ Caveats
 
 - No REST API security (yet)
 - No recursion support (yet)
-- No DNSSEC support (yet)
-- No zone transfer support (yet)
+- No forwarding (yet)
+- No DNSSEC support
+- No zone transfer support
+- No Dynamic Update (RFC2136) support
+- No caching
+- Only supports 1 question per message (for now)
+- Only supports Question opcode
 
 References
 ----------

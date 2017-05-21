@@ -1,0 +1,16 @@
+{
+  "id": "resolver-0.0.0.0:8053",
+  "patterns": [
+    "example."
+  ],
+  "listeners": [
+    {
+      "net": "tcp",
+      "address": "0.0.0.0:8053"
+    },
+    {
+      "net": "udp",
+      "address": "0.0.0.0:8053"
+    }
+  ]
+}
