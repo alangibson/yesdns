@@ -72,12 +72,6 @@ func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
 		wildcardDnsMessage.Question[0].Qname = qName
 		return nil, wildcardDnsMessage
 	}
-
-	// TODO try forwarder if no answer for exact match
-	// err, forwarders := database.ReadAllForwarders()
-	//for _, forwarder := range forwarders {
-		// TODO send new dns request to forwarder.Address
-	//}
 	
 	return nil, nil
 }

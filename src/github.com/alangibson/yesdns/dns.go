@@ -27,7 +27,6 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 	returnDnsMsg.Id = requestDnsMsg.Id
 	returnDnsMsg.RecursionDesired = requestDnsMsg.RecursionDesired // Copy rd bit
 	returnDnsMsg.Opcode = requestDnsMsg.Opcode
-	// FIXME RecursionAvailable = true when we have forwarders configured
 	returnDnsMsg.RecursionAvailable = false
 	returnDnsMsg.Response = true
 
@@ -190,7 +189,6 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 			dnsMsg.RecursionDesired = requestDnsMsg.RecursionDesired // Copy rd bit
 			dnsMsg.Response = true
 			dnsMsg.Opcode = requestDnsMsg.Opcode
-			// FIXME set RecursionAvailable = true when forwarders configured
 			dnsMsg.RecursionAvailable = false
 			dnsResponseWriter.WriteMsg(dnsMsg)
 		}
