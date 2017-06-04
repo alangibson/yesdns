@@ -41,10 +41,8 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		// Lookup did not error, but nothing found
 		returnDnsMsg.Rcode = dns.RcodeNameError // aka NXDomain
 		return returnDnsMsg
-	}
-	// else: lookup did not error and answer found
+	} // else: lookup did not error and answer found
 	returnDnsMsg.Rcode = dns.RcodeSuccess
-	// dnsMsg.Rcode = answerDnsMessage.MsgHdr.Rcode
 	
 	// Build response Question section
 	for _, questionSection := range resolvedDnsMessage.Question {
@@ -178,6 +176,9 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
+			
+			// TODO If no dnsMsg, try forwarders
+			
 			// Finally send the DNS message
 			dnsResponseWriter.WriteMsg(dnsMsg)
 		default:

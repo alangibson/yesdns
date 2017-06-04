@@ -70,19 +70,20 @@ func (d Database) ReadResolverDnsMessage(resolverId string, qtype uint16, qname 
 	return err, &returnDnsRecord
 }
 
-func (d Database) ReadAllForwarders() (error, []Forwarder) {
+func (d *Database) ReadAllForwarders() (error, []*Forwarder) {
 	jsonStrings, err := d.db.ReadAll("forwarders")
 	// Return nil if there are no Forwarders
 	if len(jsonStrings) == 0 {
 		return err, nil
 	}
 	// Convert jsonString []string to []Forwarder
-	var forwarders []Forwarder
+	var forwarders []*Forwarder
 	for _, jsonString := range jsonStrings {
-		var forwarder Forwarder
+		var forwarder *Forwarder
 		if err := json.NewDecoder(bytes.NewBufferString(jsonString)).Decode(&forwarder); err != nil {
-			log.Printf("Could not decode json: %s\n", err)
+			log.Printf("WARN Could not decode json: %s\n", err)
 		} else {
+			forwarder.Database = d
 			forwarders = append(forwarders, forwarder)
 		}
 	}
@@ -95,12 +96,11 @@ func (d *Database) ReadAllResolvers() (error, []*Resolver) {
 	if len(jsonStrings) == 0 {
 		return err, nil
 	}
-	// TODO Convert jsonString []string to []Resolver
 	var resolvers []*Resolver
 	for _, jsonString := range jsonStrings {
 		var resolver *Resolver
 		if err := json.NewDecoder(bytes.NewBufferString(jsonString)).Decode(&resolver); err != nil {
-			log.Printf("Could not decode json: %s\n", err)
+			log.Printf("WARN Could not decode json: %s\n", err)
 		} else {
 			resolver.Database = d
 			resolvers = append(resolvers, resolver)

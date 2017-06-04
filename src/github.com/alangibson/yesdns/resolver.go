@@ -47,6 +47,8 @@ type Resolver struct {
 // If name not found (ie NXDomain), DnsMessage will be null.
 //
 // This function is potentially expensive because it can do 2 database lookups and a DNS request in the worst case.
+//
+// TODO it would be better to have the client's full dns.Msg here in case we need to forward
 func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
 	// TODO Type 255 (dns.TypeANY) means any/all records
 	
@@ -73,11 +75,7 @@ func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
 		return nil, wildcardDnsMessage
 	}
 
-	// TODO try forwarder if no answer for exact match
-	// err, forwarders := database.ReadAllForwarders()
-	//for _, forwarder := range forwarders {
-		// TODO send new dns request to forwarder.Address
-	//}
+	// TODO Try forwarder if no answer for exact match
 	
 	return nil, nil
 }

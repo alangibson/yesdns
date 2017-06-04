@@ -42,16 +42,12 @@ type DnsQuestion struct {
 }
 
 type DnsMessage struct {
-	Resolvers  []string		`json:"resolvers"`
-	MsgHdr     DnsHeader
-	Question   []DnsQuestion
-	Answer     []DnsRR
-	Ns         []DnsRR
-	Extra      []DnsRR
-}
-
-type Forwarder struct {
-	Address string	`json:"address"`
+	Resolvers  []string			`json:"resolvers"`
+	MsgHdr     DnsHeader		`json:"msg_hdr"`
+	Question   []DnsQuestion	`json:"question"`
+	Answer     []DnsRR			`json:"answer"`
+	Ns         []DnsRR			`json:"ns"`
+	Extra      []DnsRR			`json:"extra"`
 }
 
 // Runs REST API HTTP server forever.
