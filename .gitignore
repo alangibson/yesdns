@@ -1,3 +1,8 @@
 src/yesdns/yesdns
 src/yesdns/db/
 .idea
+db/
+pkg/
+bin/
+yesdns.log
+
