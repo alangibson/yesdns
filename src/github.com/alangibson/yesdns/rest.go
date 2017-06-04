@@ -106,11 +106,10 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 		}
 		var forwarder Forwarder
 		if err := json.NewDecoder(r.Body).Decode(&forwarder); err != nil {
-			log.Println(err)
+			log.Printf("ERROR %s\n", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		//log.Printf("Marshalled forwarder: %s\n", forwarder)
 		// Handle method
 		if r.Method == http.MethodPut {
 			if err := database.WriteForwarder(forwarder); err != nil {

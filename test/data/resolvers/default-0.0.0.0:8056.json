@@ -1,0 +1,17 @@
+{
+  "id": "default",
+  "patterns": [
+    ".",
+    "example."
+  ],
+  "listeners": [
+    {
+      "net": "tcp",
+      "address": "0.0.0.0:8056"
+    },
+    {
+      "net": "udp",
+      "address": "0.0.0.0:8056"
+    }
+  ]
+}

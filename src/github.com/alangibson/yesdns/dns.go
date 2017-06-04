@@ -11,94 +11,79 @@ import (
 	"time"
 )
 
-//
-// DNS functions
-//
-
-func operationQuery(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolverId string) *dns.Msg {
+// Handles DNS Query operation (OpCode 0)
+// https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
+func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolver *Resolver) *dns.Msg {
 	// TODO Dont assume only 1 question. Query db once for every question
 	queryDomain := requestDnsMsg.Question[0].Name
 	qtype := requestDnsMsg.Question[0].Qtype
-	log.Printf("Received query type %s for domain %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
+	log.Printf("DEBUG Received query type %s for domain %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
 
-	// Query db for queryDomain
-	// TODO Type 255 (dns.TypeANY) means any/all records
-	//dnsQuery := DnsQuestion{Qname: queryDomain, Qtype: qtype}
-	//queryDnsRecord := DnsMessage{Question: []DnsQuestion{dnsQuery}}
-	//log.Printf("Searching database for record: %s\n", queryDnsRecord)
-	// err, answerDnsMessage := database.ReadDnsMessage(queryDnsRecord)
-
-	// TODO hide this db call in a function in the Resolver class
-	err, answerDnsMessage := database.ReadResolverDnsMessage(resolverId, qtype, queryDomain)
-	if err != nil {
-		log.Printf("Could not find record. %s\n", err)
-
-		// TODO If err indicates record not found and forwarder configured, forward request
-		// err, forwarders := database.ReadAllForwarders()
-		//for _, forwarder := range forwarders {
-			// TODO send new dns request to forwarder.Address
-		//}
-
-		// TODO only set this if forwarding fails
-		answerDnsMessage.MsgHdr.Rcode = dns.RcodeNameError
-
-	} else {
-		log.Printf("Responding to DNS Record query with %s\n", answerDnsMessage)
-		answerDnsMessage.MsgHdr.Rcode = dns.RcodeSuccess
-	}
-	
 	// Initialize response message and set header flags
 	// TODO dont use new, use composite literal instead
-	dnsMsg := new(dns.Msg)
-	// TODO m.Compress = *compress
+	returnDnsMsg := new(dns.Msg)
+	// TODO m.Compress = *compress ?
 	// Build up response message Header
-	dnsMsg.Rcode = answerDnsMessage.MsgHdr.Rcode
-	dnsMsg.Id = requestDnsMsg.Id
-	dnsMsg.RecursionDesired = requestDnsMsg.RecursionDesired // Copy rd bit
-	dnsMsg.Response = true
-	dnsMsg.Opcode = dns.OpcodeQuery
-	// We default to Success, but this can change
-	dnsMsg.Rcode = dns.RcodeSuccess
+	returnDnsMsg.Id = requestDnsMsg.Id
+	returnDnsMsg.RecursionDesired = requestDnsMsg.RecursionDesired // Copy rd bit
+	returnDnsMsg.Opcode = requestDnsMsg.Opcode
 	// FIXME RecursionAvailable = true when we have forwarders configured
-	dnsMsg.RecursionAvailable = false
+	returnDnsMsg.RecursionAvailable = false
+	returnDnsMsg.Response = true
+
+	// Try to resolve query and set status
+	err, resolvedDnsMessage := resolver.Resolve(qtype, queryDomain)
+	if err != nil {
+		// Lookup failed
+		returnDnsMsg.Rcode = dns.RcodeServerFailure
+		return returnDnsMsg
+	} else if resolvedDnsMessage == nil {
+		// Lookup did not error, but nothing found
+		returnDnsMsg.Rcode = dns.RcodeNameError // aka NXDomain
+		return returnDnsMsg
+	}
+	// else: lookup did not error and answer found
+	returnDnsMsg.Rcode = dns.RcodeSuccess
+	// dnsMsg.Rcode = answerDnsMessage.MsgHdr.Rcode
+	
 	// Build response Question section
-	for _, questionSection := range answerDnsMessage.Question {
+	for _, questionSection := range resolvedDnsMessage.Question {
 		dnsQuestion := dns.Question{Name: questionSection.Qname, Qtype: questionSection.Qtype, Qclass: questionSection.Qclass}
-		dnsMsg.Question = append(dnsMsg.Question, dnsQuestion)
+		returnDnsMsg.Question = append(returnDnsMsg.Question, dnsQuestion)
 	}
 	// Build response Answer section
-	for _, rrSection := range answerDnsMessage.Answer {
+	for _, rrSection := range resolvedDnsMessage.Answer {
 		switch rrSection.Type {
 		case dns.TypeA:
 			dnsRR := &dns.A{
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				A: net.ParseIP(rrSection.Rdata.(string)),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeAAAA:
 			dnsRR := &dns.AAAA{
 				Hdr:  dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				AAAA: net.ParseIP(rrSection.Rdata.(string)),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeCNAME:
 			dnsRR := &dns.CNAME{
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Target: rrSection.Rdata.(string),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeNS:
 			dnsRR := &dns.NS{
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ns: rrSection.Rdata.(string),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypePTR:
 			dnsRR := &dns.PTR{
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ptr: rrSection.Rdata.(string),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeSOA:
 			rdataMap := rrSection.Rdata.(map[string]interface{})
 			dnsRR := &dns.SOA{
@@ -111,7 +96,7 @@ func operationQuery(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				Expire: uint32(rdataMap["expire"].(float64)),
 				Minttl: uint32(rdataMap["minttl"].(float64)),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeSRV:
 			rdataMap := rrSection.Rdata.(map[string]interface{})
 			dnsRR := &dns.SRV{
@@ -121,7 +106,7 @@ func operationQuery(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				Port: uint16(rdataMap["port"].(float64)),
 				Target: rdataMap["target"].(string),
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsRR)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeTXT:
 			// Convert rdata to slice of string
 			txtLines := make([]string, len(rrSection.Rdata.([]interface{})))
@@ -132,28 +117,28 @@ func operationQuery(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Txt: txtLines,
 			}
-			dnsMsg.Answer = append(dnsMsg.Answer, dnsTXT)
+			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsTXT)
 			// TODO? dnsMsg.Extra = append(dnsMsg.Extra, dnsRR)
 		default:
-			log.Printf("Cant build Answer section for type: %s.\n", rrSection.Type)
+			log.Printf("WARN Cant build Answer section for type: %s.\n", rrSection.Type)
 			// TODO return error to client?
 		}
 	}
 	// Build response Authority section
-	for _, rrSection := range answerDnsMessage.Ns {
+	for _, rrSection := range resolvedDnsMessage.Ns {
 		switch rrSection.Type {
 		case dns.TypeNS:
 			dnsRR := &dns.NS{
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ns: rrSection.Rdata.(string),
 			}
-			dnsMsg.Ns = append(dnsMsg.Ns, dnsRR)
+			returnDnsMsg.Ns = append(returnDnsMsg.Ns, dnsRR)
 		default:
-			log.Printf("Cant build Authority section for type: %s.\n", rrSection.Type)
+			log.Printf("WARN Cant build Authority section for type: %s.\n", rrSection.Type)
 		}
 	}
 	// Build response Extra section
-	for _, rrSection := range answerDnsMessage.Extra {
+	for _, rrSection := range resolvedDnsMessage.Extra {
 		switch rrSection.Type {
 		case dns.TypeTXT:
 			// Convert rdata to slice of string
@@ -165,43 +150,38 @@ func operationQuery(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Txt: txtLines,
 			}
-			dnsMsg.Extra = append(dnsMsg.Extra, dnsRR)
+			returnDnsMsg.Extra = append(returnDnsMsg.Extra, dnsRR)
 		default:
-			log.Printf("Cant build Extra section for type: %s.\n", rrSection.Type)
+			log.Printf("WARN Cant build Extra section for type: %s.\n", rrSection.Type)
 		}
 	}
 
 	if requestDnsMsg.IsTsig() != nil {
 		if dnsResponseWriter.TsigStatus() == nil {
-			dnsMsg.SetTsig(requestDnsMsg.Extra[len(requestDnsMsg.Extra)-1].(*dns.TSIG).Hdr.Name, dns.HmacMD5, 300, time.Now().Unix())
+			returnDnsMsg.SetTsig(requestDnsMsg.Extra[len(requestDnsMsg.Extra)-1].(*dns.TSIG).Hdr.Name, dns.HmacMD5, 300, time.Now().Unix())
 		} else {
-			log.Println("Status", dnsResponseWriter.TsigStatus().Error())
+			log.Println("DEBUG Status", dnsResponseWriter.TsigStatus().Error())
 		}
 	}
-	return dnsMsg
+	return returnDnsMsg
 }
 
-//
-// Server Functions
-//
-
-// DNS query handler.
+// DNS query handler. Dispatches to operation handlers based on query OpCode.
 // We use a closure to maintain a reference to the database.
-func handleDnsQuery(database *Database, resolverId string) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
+func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
-		log.Printf("Handling query with local addr (%s) network: %s\n",
+		log.Printf("DEBUG Handling query with local addr (%s) network: %s\n",
 			dnsResponseWriter.LocalAddr(),
 			dnsResponseWriter.LocalAddr().Network())
 
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
-			log.Printf("Query requested. Continuing.\n")
-			dnsMsg := operationQuery(database, dnsResponseWriter, requestDnsMsg, resolverId)
+			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
 			// Finally send the DNS message
 			dnsResponseWriter.WriteMsg(dnsMsg)
 		default:
-			log.Printf("Opcode %s not supported\n", requestDnsMsg.Opcode)
+			log.Printf("WARN Opcode %s not supported\n", requestDnsMsg.Opcode)
 			// Return a failure message
 			// TODO dont use new(), use composite literal instead
 			dnsMsg := new(dns.Msg)

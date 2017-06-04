@@ -1,4 +1,7 @@
 {
+  "resolvers": [
+    "default"
+  ],
   "question": [
     {
       "qname": "4.3.2.1.in-addr.arpa.",

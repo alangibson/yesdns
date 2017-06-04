@@ -4,9 +4,11 @@ package yesdns
 
 // Depends on:
 // db.go/Database
+// dns.go/handleDnsQuery
 import (
 	"log"
 	"github.com/miekg/dns"
+	"strings"
 )
 
 // Package-level shared variable
@@ -37,13 +39,60 @@ type Resolver struct {
 	Patterns 		[]string			`json:"patterns"`
 	Store 			ResolverStore		`json:"store"`
 	Listeners 		[]ResolverListener	`json:"listeners"`
+	// We expect Database connection to match ResolverStore
+	Database		*Database
+}
+
+// If an internal error occured (ie ServerFail), error will be set.
+// If name not found (ie NXDomain), DnsMessage will be null.
+//
+// This function is potentially expensive because it can do 2 database lookups and a DNS request in the worst case.
+func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
+	// TODO Type 255 (dns.TypeANY) means any/all records
+	
+	// Try normal resolution
+	err, answerDnsMessage := r.Database.ReadResolverDnsMessage(r.Id, qType, qName)
+	if err != nil {
+		// We get err if we couldn't find record, which is not an error
+	} else if answerDnsMessage != nil {
+		// We found an answer, so return it
+		return nil, answerDnsMessage
+	}
+	
+	// Try wildcard if no result for exact match
+	wildcardQname := qnameToWildcard(qName)
+	// Try lookup again
+	err, wildcardDnsMessage := r.Database.ReadResolverDnsMessage(r.Id, qType, wildcardQname)
+	if err != nil {
+		// We get err if we couldn't find record, which is not an error
+	} else if wildcardDnsMessage != nil {
+		// We found an answer, so return it
+		// but first, we have to fix the Qname
+		// TODO support multiple questions
+		wildcardDnsMessage.Question[0].Qname = qName
+		return nil, wildcardDnsMessage
+	}
+
+	// TODO try forwarder if no answer for exact match
+	// err, forwarders := database.ReadAllForwarders()
+	//for _, forwarder := range forwarders {
+		// TODO send new dns request to forwarder.Address
+	//}
+	
+	return nil, nil
+}
+
+// Replaces the first part of a Qname/domainname with *
+//   hostname.some.example. -> *.some.example.
+func qnameToWildcard(qName string) string {
+	return "*." + strings.SplitN(qName, ".", 2)[1]
 }
 
 // Starts and stops resolvers based on config in database.
 // Maps are a 'reference type', so even though we appear to pass by value, we really just get a reference.
 func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSServerState) {
 
-	log.Printf("Reloading DNS servers from database\n")
+	log.Printf("INFO Reloading DNS servers from database\n")
 
 	var keptKeys []string
 
@@ -68,7 +117,7 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 					inRunningListener := false
 					for _, runningServerPattern := range runningDNSServer.Patterns {
 						if configuredPattern == runningServerPattern {
-							log.Printf("Found matching configured and running pattern (%s) in listener %s\n",
+							log.Printf("DEBUG Found matching configured and running pattern (%s) in listener %s\n",
 								configuredPattern, listenerKey)
 							inRunningListener = true
 							break
@@ -78,7 +127,7 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 					// Do nothing if pattern already registered with handler.
 					// Otherwise, create new handler and register pattern with running server.
 					if inRunningListener {
-						log.Printf("Pattern %s already registered on listener %s\n",
+						log.Printf("DEBUG Pattern %s already registered on listener %s\n",
 							configuredResolver.Patterns, listenerKey)
 
 						// Record that this listener+pattern combo was in the configuration
@@ -87,16 +136,16 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 					} else {
 						// There is already a running dns.Server for this listener
 						// Update handlers to serve configuredResolver.Pattern
-						log.Printf("Adding pattern (%s) to running server %s\n",
+						log.Printf("INFO Adding pattern (%s) to running server %s\n",
 							configuredResolver.Patterns, runningDNSServer)
 
 						for _, configuredPattern := range configuredResolver.Patterns {
 							
 							// configuredResolver.Id
-							runningDNSServer.ServeMux.HandleFunc(configuredPattern, handleDnsQuery(db, configuredResolver.Id))
+							runningDNSServer.ServeMux.HandleFunc(configuredPattern, handleDnsQuery(db, configuredResolver))
 							// Add this pattern to the list of patterns this server will handle
 							runningDNSServer.Patterns = append(runningDNSServer.Patterns, configuredPattern)
-							log.Printf("After addition, patterns are: %s\n", runningDNSServer.Patterns)
+							log.Printf("DEBUG After addition, patterns are: %s\n", runningDNSServer.Patterns)
 							runningDNSServers[listenerKey] = runningDNSServer
 
 							// Record that this listener+pattern combo was in the configuration
@@ -107,7 +156,7 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 				}
 			} else { // Server/Listener is not already running
 
-				log.Printf("Starting new server on %s %s with pattern '%s'\n",
+				log.Printf("INFO Starting new server on %s %s with pattern '%s'\n",
 					listener.Net, listener.Address, configuredResolver.Patterns)
 				// Create new dns.Server
 				// Each listener (protocol+interface+port combo) has its own ServeMux, and hence its
@@ -117,7 +166,7 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 				for _, configuredPattern := range configuredResolver.Patterns {
 
 					// Register a handler for pattern
-					serveMux.HandleFunc(configuredPattern, handleDnsQuery(db, configuredResolver.Id))
+					serveMux.HandleFunc(configuredPattern, handleDnsQuery(db, configuredResolver))
 					patterns = append(patterns, configuredPattern)
 
 					// Record that this listener+pattern combo was in the configuration
@@ -136,7 +185,7 @@ func SyncResolversWithDatabase(db *Database, runningDNSServers map[string]DNSSer
 				// Record new server/listener
 				runningDNSServers[listenerKey] = DNSServerState{ShutdownChannel:shutdownChannel,
 										ServeMux:serveMux, Patterns:patterns, Listener: listener}
-				log.Printf("Added running server %s with listener key %s and patterns %s\n",
+				log.Printf("DEBUG Added running server %s with listener key %s and patterns %s\n",
 					runningDNSServers[listenerKey], listenerKey, patterns)
 			}
 		}

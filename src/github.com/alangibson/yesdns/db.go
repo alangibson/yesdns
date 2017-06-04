@@ -1,7 +1,7 @@
 package yesdns
 
 // Depends on:
-// resolver.go/Resolver
+// resolver.go/
 import (
 	"github.com/nanobox-io/golang-scribble"
 	"log"
@@ -63,11 +63,11 @@ func (d Database) ReadDnsMessage(dnsRecord DnsMessage) (error, DnsMessage) {
 	return err, returnDnsRecord
 }
 
-func (d Database) ReadResolverDnsMessage(resolverId string, qtype uint16, qname string) (error, DnsMessage) {
+func (d Database) ReadResolverDnsMessage(resolverId string, qtype uint16, qname string) (error, *DnsMessage) {
 	returnDnsRecord := DnsMessage{}
 	key := resolverId + "/" + strconv.Itoa(int(qtype))
 	err := d.db.Read(key, qname, &returnDnsRecord)
-	return err, returnDnsRecord
+	return err, &returnDnsRecord
 }
 
 func (d Database) ReadAllForwarders() (error, []Forwarder) {
@@ -89,19 +89,20 @@ func (d Database) ReadAllForwarders() (error, []Forwarder) {
 	return err, forwarders
 }
 
-func (d Database) ReadAllResolvers() (error, []Resolver) {
+func (d *Database) ReadAllResolvers() (error, []*Resolver) {
 	jsonStrings, err := d.db.ReadAll("resolvers")
 	// Return nil if there are no Forwarders
 	if len(jsonStrings) == 0 {
 		return err, nil
 	}
 	// TODO Convert jsonString []string to []Resolver
-	var resolvers []Resolver
+	var resolvers []*Resolver
 	for _, jsonString := range jsonStrings {
-		var resolver Resolver
+		var resolver *Resolver
 		if err := json.NewDecoder(bytes.NewBufferString(jsonString)).Decode(&resolver); err != nil {
 			log.Printf("Could not decode json: %s\n", err)
 		} else {
+			resolver.Database = d
 			resolvers = append(resolvers, resolver)
 		}
 	}

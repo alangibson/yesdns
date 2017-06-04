@@ -1,4 +1,7 @@
 {
+  "resolvers": [
+    "default"
+  ],
   "question": [
     {
       "qname": "_http._tcp.some.domain.",

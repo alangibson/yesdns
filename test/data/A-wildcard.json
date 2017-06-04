@@ -1,0 +1,21 @@
+{
+  "resolvers": [
+    "default"
+  ],
+  "question": [
+    {
+      "qname": "*.some.example.",
+      "qtype": 1,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "wildcard.some.example.",
+      "type": 1,
+      "class": 1,
+      "ttl": 1,
+      "rdata": "1.2.3.4"
+    }
+  ]
+}

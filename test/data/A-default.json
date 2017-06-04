@@ -4,14 +4,14 @@
   ],
   "question": [
     {
-      "qname": "some.domain.",
+      "qname": "hostname.example.",
       "qtype": 1,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "some.domain.",
+      "name": "hostname.example.",
       "type": 1,
       "class": 1,
       "ttl": 10,
@@ -20,7 +20,7 @@
   ],
   "ns": [
     {
-      "name": "some.domain.",
+      "name": "hostname.example.",
       "type": 2,
       "class": 1,
       "rdata": "ns1.some.domain."
@@ -28,7 +28,7 @@
   ],
   "extra": [
     {
-      "name": "some.domain.",
+      "name": "hostname.example.",
       "type": 16,
       "class": 1,
       "ttl": 10,
