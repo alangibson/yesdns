@@ -14,11 +14,12 @@ Usage
 
 Run
 
-    git clone https://github.com/alangibson/yesdns.git
-    cd yesdns/src
-    go build && ./yesdns &
-    curl -v -X PUT -d@../../test/data/A.json localhost:8080/v1/message
-    dig @localhost -p 8053 some.domain. A
+    go get github.com/alangibson/yesdns
+    go install github.com/alangibson/yesdns/cmd/yesdns
+    $GOPATH/bin/yesdns &
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/resolvers/default-0.0.0.0:53.json" localhost:5380/v1/message
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A.json" localhost:5380/v1/message
+    dig @localhost some.domain. A
 
 Output
 

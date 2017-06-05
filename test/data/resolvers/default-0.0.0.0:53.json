@@ -1,0 +1,22 @@
+{
+  "id": "default",
+  "patterns": [
+    "."
+  ],
+  "listeners": [
+    {
+      "net": "tcp",
+      "address": "0.0.0.0:53"
+    },
+    {
+      "net": "udp",
+      "address": "0.0.0.0:53"
+    }
+  ],
+  "forwarders": [
+    {
+      "net": "udp",
+      "address": "8.8.8.8:53"
+    }
+  ]
+}
