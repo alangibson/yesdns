@@ -13,7 +13,6 @@ set_up() {
 
   # 'go get' requirements
   echo Installing requirements in $GOPATH
-  rm -fr "$GOPATH"
   go get github.com/nanobox-io/golang-scribble
   go get github.com/miekg/dns
 
@@ -21,7 +20,7 @@ set_up() {
   rm -fr db/
   go install github.com/alangibson/yesdns
   go install github.com/alangibson/yesdns/cmd/yesdns
-  ./bin/yesdns > yesdns.log 2>&1 &
+  $GOPATH/bin/yesdns > yesdns.log 2>&1 &
   YESDNS_PID=$!
   echo YesDNS pid is $YESDNS_PID
   sleep 2
@@ -95,3 +94,10 @@ echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
 curl -v -X PUT -d@./test/data/A-wildcard.json localhost:8080/v1/message
 assert_dig_ok @localhost 8056 notreal.some.example. A
+
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Forwarding
+echo //////////////////////////////////////////////////////////////////////////
+# curl -v -X PUT -d@./test/data/forwarder/forwarder-8.8.8.8.json localhost:8080/v1/forwarder
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
+assert_dig_ok @localhost 8056 www.google.com. A

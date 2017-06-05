@@ -42,12 +42,12 @@ type DnsQuestion struct {
 }
 
 type DnsMessage struct {
-	Resolvers  []string		`json:"resolvers"`
-	MsgHdr     DnsHeader
-	Question   []DnsQuestion
-	Answer     []DnsRR
-	Ns         []DnsRR
-	Extra      []DnsRR
+	Resolvers  []string			`json:"resolvers"`
+	MsgHdr     DnsHeader		`json:"msg_hdr"`
+	Question   []DnsQuestion	`json:"question"`
+	Answer     []DnsRR			`json:"answer"`
+	Ns         []DnsRR			`json:"ns"`
+	Extra      []DnsRR			`json:"extra"`
 }
 
 // Runs REST API HTTP server forever.
@@ -93,7 +93,7 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 			http.Error(w, msg, http.StatusMethodNotAllowed)
 		}
 	})
-	
+
 	http.HandleFunc("/v1/resolver", func(w http.ResponseWriter, r *http.Request) {
 		// Decode json
 		if r.Body == nil {
@@ -113,14 +113,14 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database, RunningDNSServers)
+			SyncResolversWithDatabase(database)
 		} else if r.Method == http.MethodDelete {
 			if err := database.DeleteResolver(resolver); err != nil {
 				log.Printf("Error deleting %s. Error was: %s\n", resolver, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database, RunningDNSServers)
+			SyncResolversWithDatabase(database)
 		} else {
 			msg := fmt.Sprintf("Method %s not allowed for /v1/resolver\n", r.Method)
 			// TODO return json error message

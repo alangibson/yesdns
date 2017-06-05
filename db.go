@@ -71,12 +71,11 @@ func (d *Database) ReadAllResolvers() (error, []*Resolver) {
 	if len(jsonStrings) == 0 {
 		return err, nil
 	}
-	// TODO Convert jsonString []string to []Resolver
 	var resolvers []*Resolver
 	for _, jsonString := range jsonStrings {
 		var resolver *Resolver
 		if err := json.NewDecoder(bytes.NewBufferString(jsonString)).Decode(&resolver); err != nil {
-			log.Printf("Could not decode json: %s\n", err)
+			log.Printf("WARN Could not decode json: %s\n", err)
 		} else {
 			resolver.Database = d
 			resolvers = append(resolvers, resolver)

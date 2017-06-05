@@ -52,18 +52,36 @@ Testing
 
     ./test/test.sh
 
+Resolution Algorithm 
+--------------------
+
+- Receive a DNS Question on a Listener.
+- Look up exact matching record in database by Qtype and Qname
+  - Return Answer if found
+- Otherwise, substitute wildcard (*) for leftmost element in Qname and repeat lookup
+      Example: hostname.example.com. -> *.example.com.
+  - Return Answer if found
+- Return NxDomain if no Forward configured
+- Otherwise, send request to Forward if configured
+  - If failure while forwarding, return ServFail
+  - Return Answer from Forward if Forward returned positive response
+- Otherwise, return NXDomain
+
 Caveats
 -------
 
 - No REST API security (yet)
 - No recursion support (yet)
 - No forwarding (yet)
+- No TLS support (yet)
+- Only supports 1 question per message (for now)
+- Only supports Question OpCode (for now)
+- Wildcards are not RFC4592 compliant, and only partially RFC1034 compliant
+  A.X.COM is matched by *.X.COM matches, but not *.A.X.COM
 - No DNSSEC support
 - No zone transfer support
 - No Dynamic Update (RFC2136) support
 - No caching
-- Only supports 1 question per message (for now)
-- Only supports Question opcode
 
 References
 ----------

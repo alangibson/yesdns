@@ -20,7 +20,6 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 	log.Printf("DEBUG Received query type %s for domain %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
 
 	// Initialize response message and set header flags
-	// TODO dont use new, use composite literal instead
 	returnDnsMsg := new(dns.Msg)
 	// TODO m.Compress = *compress ?
 	// Build up response message Header
@@ -40,10 +39,8 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		// Lookup did not error, but nothing found
 		returnDnsMsg.Rcode = dns.RcodeNameError // aka NXDomain
 		return returnDnsMsg
-	}
-	// else: lookup did not error and answer found
+	} // else: lookup did not error and answer found
 	returnDnsMsg.Rcode = dns.RcodeSuccess
-	// dnsMsg.Rcode = answerDnsMessage.MsgHdr.Rcode
 	
 	// Build response Question section
 	for _, questionSection := range resolvedDnsMessage.Question {
@@ -176,13 +173,27 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
+			// Try to find answer in our internal db
+			log.Printf("DEBUG Trying internal resolution\n")
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
-			// Finally send the DNS message
-			dnsResponseWriter.WriteMsg(dnsMsg)
+			log.Printf("DEBUG Rcode is %s\n", dnsMsg.Rcode)
+			if dnsMsg.Rcode == dns.RcodeSuccess {
+				dnsResponseWriter.WriteMsg(dnsMsg)
+				return
+			}
+			// We did not succeed in internal lookup, so try forwarders
+			log.Printf("DEBUG Trying forwarders\n")
+			err, forwardDnsMsg := resolver.Forward(requestDnsMsg)
+			if err == nil && forwardDnsMsg != nil {
+				dnsResponseWriter.WriteMsg(forwardDnsMsg)
+			} else {
+				// TODO is this correct behavior?
+				// Default to our (failed) internal lookup
+				dnsResponseWriter.WriteMsg(dnsMsg)
+			}
 		default:
 			log.Printf("WARN Opcode %s not supported\n", requestDnsMsg.Opcode)
 			// Return a failure message
-			// TODO dont use new(), use composite literal instead
 			dnsMsg := new(dns.Msg)
 			dnsMsg.Rcode = dns.RcodeNotImplemented
 			dnsMsg.Id = requestDnsMsg.Id
