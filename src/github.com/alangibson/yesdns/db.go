@@ -44,10 +44,6 @@ func (d Database) WriteDnsMessage(dnsRecord DnsMessage) error {
 	return nil
 }
 
-func (d Database) WriteForwarder(forwarder Forwarder) error {
-	return d.db.Write("forwarders", forwarder.Address, forwarder)
-}
-
 func (d Database) WriteResolver(resolver Resolver) error {
 	err := d.db.Write("resolvers", resolver.Id, resolver)
 	return err
@@ -68,26 +64,6 @@ func (d Database) ReadResolverDnsMessage(resolverId string, qtype uint16, qname 
 	key := resolverId + "/" + strconv.Itoa(int(qtype))
 	err := d.db.Read(key, qname, &returnDnsRecord)
 	return err, &returnDnsRecord
-}
-
-func (d *Database) ReadAllForwarders() (error, []*Forwarder) {
-	jsonStrings, err := d.db.ReadAll("forwarders")
-	// Return nil if there are no Forwarders
-	if len(jsonStrings) == 0 {
-		return err, nil
-	}
-	// Convert jsonString []string to []Forwarder
-	var forwarders []*Forwarder
-	for _, jsonString := range jsonStrings {
-		var forwarder *Forwarder
-		if err := json.NewDecoder(bytes.NewBufferString(jsonString)).Decode(&forwarder); err != nil {
-			log.Printf("WARN Could not decode json: %s\n", err)
-		} else {
-			forwarder.Database = d
-			forwarders = append(forwarders, forwarder)
-		}
-	}
-	return err, forwarders
 }
 
 func (d *Database) ReadAllResolvers() (error, []*Resolver) {
@@ -115,10 +91,6 @@ func (d Database) DeleteDnsMessage(dnsRecord DnsMessage) error {
 	question := dnsRecord.Question[0]
 	err := d.db.Delete(strconv.Itoa(int(question.Qtype)), question.Qname)
 	return err
-}
-
-func (d Database) DeleteForwarder(forwarder Forwarder) error {
-	return d.db.Delete("forwarders", forwarder.Address)
 }
 
 func (d Database) DeleteResolver(resolver Resolver) error {

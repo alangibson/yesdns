@@ -96,8 +96,9 @@ curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080
 curl -v -X PUT -d@./test/data/A-wildcard.json localhost:8080/v1/message
 assert_dig_ok @localhost 8056 notreal.some.example. A
 
-# echo //////////////////////////////////////////////////////////////////////////
-# echo // Test Forwarding
-# echo //////////////////////////////////////////////////////////////////////////
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Forwarding
+echo //////////////////////////////////////////////////////////////////////////
 # curl -v -X PUT -d@./test/data/forwarder/forwarder-8.8.8.8.json localhost:8080/v1/forwarder
-# assert_dig_ok @localhost 8063 www.google.com. A
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
+assert_dig_ok @localhost 8056 www.google.com. A

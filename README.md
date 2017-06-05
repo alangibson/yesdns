@@ -76,6 +76,8 @@ Caveats
 - No TLS support (yet)
 - Only supports 1 question per message (for now)
 - Only supports Question OpCode (for now)
+- Wildcards are not RFC4592 compliant, and only partially RFC1034 compliant
+  A.X.COM is matched by *.X.COM matches, but not *.A.X.COM
 - No DNSSEC support
 - No zone transfer support
 - No Dynamic Update (RFC2136) support

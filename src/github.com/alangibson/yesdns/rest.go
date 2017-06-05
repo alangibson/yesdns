@@ -94,38 +94,6 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 		}
 	})
 
-	http.HandleFunc("/v1/forwarder", func(w http.ResponseWriter, r *http.Request) {
-		// Decode json
-		if r.Body == nil {
-			http.Error(w, "Empty body not allowed", http.StatusBadRequest)
-			return
-		}
-		var forwarder Forwarder
-		if err := json.NewDecoder(r.Body).Decode(&forwarder); err != nil {
-			log.Printf("ERROR %s\n", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		// Handle method
-		if r.Method == http.MethodPut {
-			if err := database.WriteForwarder(forwarder); err != nil {
-				log.Printf("Error writing %s. Error was: %s\n", forwarder, err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		} else if r.Method == http.MethodDelete {
-			if err := database.DeleteForwarder(forwarder); err != nil {
-				log.Printf("Error deleting %s. Error was: %s\n", forwarder, err)
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		} else {
-			msg := fmt.Sprintf("Method %s not allowed for /v1/forwarder\n", r.Method)
-			// TODO return json error message
-			http.Error(w, msg, http.StatusMethodNotAllowed)
-		}
-	})
-
 	http.HandleFunc("/v1/resolver", func(w http.ResponseWriter, r *http.Request) {
 		// Decode json
 		if r.Body == nil {
@@ -145,14 +113,14 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database, RunningDNSServers)
+			SyncResolversWithDatabase(database)
 		} else if r.Method == http.MethodDelete {
 			if err := database.DeleteResolver(resolver); err != nil {
 				log.Printf("Error deleting %s. Error was: %s\n", resolver, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database, RunningDNSServers)
+			SyncResolversWithDatabase(database)
 		} else {
 			msg := fmt.Sprintf("Method %s not allowed for /v1/forwarder\n", r.Method)
 			// TODO return json error message
