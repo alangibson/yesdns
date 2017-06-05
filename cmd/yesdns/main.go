@@ -9,13 +9,6 @@ import (
 	"github.com/alangibson/yesdns"
 )
 
-func dumpRunningDNSServers() {
-	for _, runningDNSServer := range yesdns.RunningDNSServers {
-		log.Printf("Listener: \n", runningDNSServer.Listener.Key())
-		log.Printf("  Patterns: \n", runningDNSServer.Patterns)
-	}
-}
-
 func main() {
 	// User-provided parameters
 	// TODO support TSIG via /v1/resolvers api
@@ -39,10 +32,14 @@ func main() {
 		return
 	}
 
-	yesdns.SyncResolversWithDatabase(database)
+	// Sending value to this channel reloads resolvers from db
+	reloadChannel := make(chan bool)
+	
+	// Start up resolver manager
+	go yesdns.SyncResolversWithDatabase(database, reloadChannel)
 
 	// Start up REST API
-	go yesdns.ServeRestApi(httpListen, database)
+	go yesdns.ServeRestApi(httpListen, database, reloadChannel)
 
 	// Wait for process to be stopped by user
 	sig := make(chan os.Signal)

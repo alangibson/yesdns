@@ -54,7 +54,7 @@ type DnsMessage struct {
 //
 // httpListenAddr: (string) interface and port to listen on
 // database: (*Database) Reference to local database that stores DNS records.
-func ServeRestApi(httpListenAddr string, database *Database) {
+func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan <- bool) {
 	log.Printf("Starting REST API listener on %s\n", httpListenAddr)
 
 	http.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
@@ -113,14 +113,14 @@ func ServeRestApi(httpListenAddr string, database *Database) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database)
+			reloadChannel <- true
 		} else if r.Method == http.MethodDelete {
 			if err := database.DeleteResolver(resolver); err != nil {
 				log.Printf("Error deleting %s. Error was: %s\n", resolver, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			SyncResolversWithDatabase(database)
+			reloadChannel <- true
 		} else {
 			msg := fmt.Sprintf("Method %s not allowed for /v1/resolver\n", r.Method)
 			// TODO return json error message
