@@ -1,13 +1,21 @@
-FROM golang:1.7
+FROM alpine:3.6
 
-WORKDIR /go/src/github.com/alangibson/yesdns
-COPY . .
+ENV GOROOT=/usr/lib/go \
+    GOPATH=/go \
+    GOBIN=/go/bin \
+    PATH=$PATH:$GOROOT/bin:$GOBIN
 
-RUN go-wrapper download   # "go get -d -v ./..."
-RUN go-wrapper install    # "go install -v ./..."
+RUN apk add -U git go libc-dev && \
+  go get -v github.com/alangibson/yesdns && \
+  go install github.com/alangibson/yesdns/cmd/yesdns && \
+  cp $GOBIN/yesdns /usr/local/bin/ && \
+  apk del git go && \
+  rm -rf /go/pkg && \
+  rm -rf /go/src && \
+  rm -rf /var/cache/apk/*
 
-WORKDIR /go/src/github.com/alangibson/yesdns/cmd/yesdns
-RUN go-wrapper install    # "go install -v ./..."
+WORKDIR /var/lib/yesdns
+VOLUME /var/lib/yesdns
 
 # Default HTTP port is 5380
 # By convention, the 'default' resolver is on 53
