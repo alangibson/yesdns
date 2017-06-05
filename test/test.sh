@@ -1,8 +1,5 @@
 #!/bin/bash
 
-GOPATH=${GOPATH:-/tmp/gopath}
-export GOPATH
-
 YESDNS_PID=0
 
 set_up() {
@@ -16,10 +13,13 @@ set_up() {
   go get github.com/nanobox-io/golang-scribble
   go get github.com/miekg/dns
 
-  # Start YesDNS
-  rm -fr db/
+  # Build YesDNS
+  echo Building YesDNS
   go install github.com/alangibson/yesdns
   go install github.com/alangibson/yesdns/cmd/yesdns
+
+  # Start YesDNS
+  rm -fr db/
   $GOPATH/bin/yesdns > yesdns.log 2>&1 &
   YESDNS_PID=$!
   echo YesDNS pid is $YESDNS_PID
@@ -63,41 +63,41 @@ set_up
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test resolver startup
 echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:8080/v1/resolver
+curl -v -X PUT -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:5380/v1/resolver
 nc -z -v localhost 8054
 assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test resolver stop
 echo //////////////////////////////////////////////////////////////////////////
-curl -v -X DELETE -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:8080/v1/resolver
+curl -v -X DELETE -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:5380/v1/resolver
 nc -z -v localhost 8054
 assert_exit_nok $?
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test A Record
 echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
-curl -v -X PUT -d@./test/data/A-default.json localhost:8080/v1/message
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
 assert_dig_ok @localhost 8056 hostname.example. A
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test SOA Record
 echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
-curl -v -X PUT -d@./test/data/SOA.json localhost:8080/v1/message
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
 assert_dig_ok @localhost 8056 some.domain. SOA
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Wildcard Lookup
 echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
-curl -v -X PUT -d@./test/data/A-wildcard.json localhost:8080/v1/message
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-wildcard.json localhost:5380/v1/message
 assert_dig_ok @localhost 8056 notreal.some.example. A
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Forwarding
 echo //////////////////////////////////////////////////////////////////////////
-# curl -v -X PUT -d@./test/data/forwarder/forwarder-8.8.8.8.json localhost:8080/v1/forwarder
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:8080/v1/resolver
+# curl -v -X PUT -d@./test/data/forwarder/forwarder-8.8.8.8.json localhost:5380/v1/forwarder
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
 assert_dig_ok @localhost 8056 www.google.com. A

@@ -23,7 +23,7 @@ func main() {
 
 	// Via environment variables
 	httpListen, ok := os.LookupEnv("YESDNS_HTTP_LISTEN")
-	if ! ok { httpListen = "0.0.0.0:8080" }
+	if ! ok { httpListen = "0.0.0.0:5380" }
 	dbDir, ok := os.LookupEnv("YESDNS_DB_DIR")
 	if ! ok { dbDir = "./db/v1" }
 	// Via command line
