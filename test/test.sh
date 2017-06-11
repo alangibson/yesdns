@@ -2,35 +2,50 @@
 
 YESDNS_PID=0
 
+start_yesdns_http() {
+  rm -fr db/
+  $GOPATH/bin/yesdns -http-listen=localhost:5380 >> yesdns.log 2>&1 &
+  YESDNS_PID=$!
+  echo YesDNS pid is $YESDNS_PID
+  sleep 2
+}
+
+start_yesdns_https() {
+  rm -fr db/
+  openssl genrsa -out server.key 2048
+  openssl ecparam -genkey -name secp384r1 -out server.key
+  openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650 -subj "/C=US/ST=TX/L=Austin/O=YesDNS/CN=localhost"
+  $GOPATH/bin/yesdns -http-listen=localhost:53443 -tls-cert-file=server.crt -tls-key-file=server.key >> yesdns.log 2>&1 &
+  YESDNS_PID=$!
+  echo YesDNS pid is $YESDNS_PID
+  sleep 2
+}
+
+kill_yesdns() {
+  echo Killing YesDNS with pid $YESDNS_PID
+  kill $YESDNS_PID
+}
+
 set_up() {
   set -e
-
+  echo '' > yesdns.log
   # Set up GOPATH
   echo GOPATH is $GOPATH
-
   # 'go get' requirements
   echo Installing requirements in $GOPATH
   go get github.com/nanobox-io/golang-scribble
   go get github.com/miekg/dns
-
   # Build YesDNS
   echo Building YesDNS
   go install github.com/alangibson/yesdns
   go install github.com/alangibson/yesdns/cmd/yesdns
-
-  # Start YesDNS
-  rm -fr db/
-  $GOPATH/bin/yesdns > yesdns.log 2>&1 &
-  YESDNS_PID=$!
-  echo YesDNS pid is $YESDNS_PID
-  sleep 2
-
+  # pre-start the server
+  start_yesdns_http
   set +e
 }
 
 tear_down() {
-  echo Killing YesDNS with pid $YESDNS_PID
-  kill $YESDNS_PID
+  kill_yesdns
 }
 trap tear_down EXIT
 
@@ -98,6 +113,12 @@ assert_dig_ok @localhost 8056 notreal.some.example. A
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Forwarding
 echo //////////////////////////////////////////////////////////////////////////
-# curl -v -X PUT -d@./test/data/forwarder/forwarder-8.8.8.8.json localhost:5380/v1/forwarder
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
 assert_dig_ok @localhost 8056 www.google.com. A
+
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test TLS
+echo //////////////////////////////////////////////////////////////////////////
+start_yesdns_https
+yes | openssl s_client -showcerts -connect localhost:53443
+assert_exit_ok $?

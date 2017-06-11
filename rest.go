@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"fmt"
+	//"path/filepath"
 )
 
 //
@@ -54,9 +55,7 @@ type DnsMessage struct {
 //
 // httpListenAddr: (string) interface and port to listen on
 // database: (*Database) Reference to local database that stores DNS records.
-func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan <- bool) {
-	log.Printf("Starting REST API listener on %s\n", httpListenAddr)
-
+func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan <- bool, tlsCertFile string, tlsKeyFile string) {
 	http.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
 		// Decode json
 		if r.Body == nil {
@@ -129,5 +128,13 @@ func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan 
 	})
 
 	// Start serving REST API forever
-	log.Fatal(http.ListenAndServe(httpListenAddr, nil))
+	if tlsCertFile == "" || tlsKeyFile == "" {
+		log.Printf("INFO Starting unsecured REST API listener on %s\n", httpListenAddr)
+		log.Fatal(http.ListenAndServe(httpListenAddr, nil))
+	} else {
+		log.Printf("INFO Starting TLS REST API listener on %s\n", httpListenAddr)
+		// tlsCertFile, _ := filepath.Abs(tlsCertFile)
+		// tlsKeyFile, _ := filepath.Abs(tlsKeyFile)
+		log.Fatal(http.ListenAndServeTLS(httpListenAddr, tlsCertFile, tlsKeyFile, nil))
+	}
 }

@@ -214,7 +214,7 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 // name: (string) DNSSEC  name.
 // secret: (string) DNSSEC TSIG.
 func serveDns(net, listenAddr, name, secret string, handler dns.Handler, shutdownChannel chan int) {
-	log.Printf("Starting listener on %s %s\n", net, listenAddr)
+	log.Printf("INFO Starting listener on %s %s\n", net, listenAddr)
 
 	var server *dns.Server
 
@@ -229,7 +229,7 @@ func serveDns(net, listenAddr, name, secret string, handler dns.Handler, shutdow
 	// Start this up in an anonymous goroutine because server.ListenAndServe() blocks
 	go func() {
 		if err := server.ListenAndServe(); err != nil {
-			log.Printf("Closed " + net + " server: %s\n", err.Error())
+			log.Printf("INFO Closed " + net + " server: %s\n", err.Error())
 		}
 	}()
 

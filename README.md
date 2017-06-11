@@ -48,6 +48,14 @@ Output
     ;; WHEN: Mon Apr 17 18:57:51 CEST 2017
     ;; MSG SIZE  rcvd: 155
 
+Run with TLS
+
+    openssl genrsa -out server.key 2048
+    openssl ecparam -genkey -name secp384r1 -out server.key
+    openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650 -subj "/C=US/ST=TX/L=Austin/O=YesDNS/CN=localhost"
+
+    yesdns -http-listen=:53443 -tls-cert-file=server.crt -tls-key-file=server.key
+
 Testing
 -------
 
@@ -72,7 +80,6 @@ Caveats
 -------
 
 - No REST API security (yet)
-- No TLS support (yet)
 - Only supports Question OpCode (for now)
 - Wildcards are not RFC4592 compliant, and only partially RFC1034 compliant
   - i.e. A.X.COM is matched by *.X.COM, but not *.A.X.COM

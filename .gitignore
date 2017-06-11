@@ -5,4 +5,5 @@ db/
 pkg/
 bin/
 yesdns.log
-
+*.crt
+*.key
