@@ -28,7 +28,7 @@ func NewDatabase(scribbleDbDir string) (error, *Database) {
 }
 
 func (d Database) WriteDnsMessage(dnsRecord DnsMessage) error {
-	log.Printf("Saving %s to db\n", dnsRecord)
+	log.Printf("DEBUG Saving %s to db\n", dnsRecord)
 
 	// We create records for every resolver
 	for _, resolverId := range dnsRecord.Resolvers {
@@ -50,8 +50,7 @@ func (d Database) WriteResolver(resolver Resolver) error {
 }
 
 func (d Database) ReadDnsMessage(dnsRecord DnsMessage) (error, DnsMessage) {
-	log.Printf("Querying DNS Record %s\n", dnsRecord)
-	// TODO Need to support > 1 question
+	log.Printf("DEBUG Querying DNS Record %s\n", dnsRecord)
 	question := dnsRecord.Question[0]
 	returnDnsRecord := DnsMessage{}
 	// TODO look up by resolver.id/question.qtype
@@ -85,15 +84,14 @@ func (d *Database) ReadAllResolvers() (error, []*Resolver) {
 }
 
 func (d Database) DeleteDnsMessage(dnsRecord DnsMessage) error {
-	log.Printf("Deleting DNS Record %s\n", dnsRecord)
-	// TODO Need to support > 1 question
+	log.Printf("DEBUG Deleting DNS Record %s\n", dnsRecord)
 	question := dnsRecord.Question[0]
 	err := d.db.Delete(strconv.Itoa(int(question.Qtype)), question.Qname)
 	return err
 }
 
 func (d Database) DeleteResolver(resolver Resolver) error {
-	log.Printf("Deleting resolver %s\n", resolver.Id)
+	log.Printf("DEBUG Deleting resolver %s\n", resolver.Id)
 	err := d.db.Delete("resolvers", resolver.Id)
 	return err
 }

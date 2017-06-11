@@ -58,7 +58,6 @@ func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
 	} else if wildcardDnsMessage != nil {
 		// We found an answer, so return it
 		// but first, we have to fix the Qname
-		// TODO support multiple questions
 		wildcardDnsMessage.Question[0].Qname = qName
 		return nil, wildcardDnsMessage
 	}

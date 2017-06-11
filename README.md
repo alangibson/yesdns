@@ -73,10 +73,10 @@ Caveats
 
 - No REST API security (yet)
 - No TLS support (yet)
-- Only supports 1 question per message (for now)
 - Only supports Question OpCode (for now)
 - Wildcards are not RFC4592 compliant, and only partially RFC1034 compliant
-  A.X.COM is matched by *.X.COM matches, but not *.A.X.COM
+  - i.e. A.X.COM is matched by *.X.COM, but not *.A.X.COM
+- Only supports 1 question per message, [like everyone else](https://stackoverflow.com/questions/4082081/requesting-a-and-aaaa-records-in-single-dns-query).
 - No recursion support
 - No DNSSEC support
 - No zone transfer support
@@ -86,4 +86,7 @@ Caveats
 References
 ----------
 
-DNS Messages: http://www.zytrax.com/books/dns/ch15/
+- [DNS Messages](http://www.zytrax.com/books/dns/ch15/)
+- [RFC1034](https://tools.ietf.org/html/rfc1034)
+- [RFC2136](https://tools.ietf.org/html/rfc2136)
+- [RFC4592](https://tools.ietf.org/html/rfc4592)

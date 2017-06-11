@@ -14,7 +14,6 @@ import (
 // Handles DNS Query operation (OpCode 0)
 // https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
 func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolver *Resolver) *dns.Msg {
-	// TODO Dont assume only 1 question. Query db once for every question
 	queryDomain := requestDnsMsg.Question[0].Name
 	qtype := requestDnsMsg.Question[0].Qtype
 	log.Printf("DEBUG Received query type %s for domain %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
