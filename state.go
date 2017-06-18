@@ -76,7 +76,7 @@ func addResolvers(runningResolvers map[string]ResolverState, db *Database, confi
 				}
 			} else { // Server/Listener is not already running
 
-				log.Printf("INFO Starting new server on %s %s with pattern '%s'\n",
+				log.Printf("INFO Starting new resolver on %s %s with pattern '%s'\n",
 					listener.Net, listener.Address, configuredResolver.Patterns)
 				// Create new dns.Server
 				// Each listener (protocol+interface+port combo) has its own ServeMux, and hence its
@@ -148,7 +148,7 @@ func cleanUpResolvers(runningResolvers map[string]ResolverState, keptListenerPat
 
 		// If there are no more patterns assigned, stop server
 		if len(runningDNSServer.Patterns) == 0 {
-			log.Printf("Stopping server: %s\n", listenerKey)
+			log.Printf("INFO Stopping server: %s\n", listenerKey)
 			runningDNSServer.ShutdownChannel <- 0
 			// Remove runningResolverKey from runningResolvers
 			delete(runningResolvers, listenerKey)

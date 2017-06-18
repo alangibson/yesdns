@@ -32,7 +32,7 @@ func main() {
 	// TODO Sanitize dbDir. Should lot allow '..'
 	err, database := yesdns.NewDatabase(dbDir)
 	if err != nil {
-		log.Printf("Could not open database %s\n", dbDir)
+		log.Printf("ERROR Could not open database %s\n", dbDir)
 		return
 	}
 
@@ -48,7 +48,7 @@ func main() {
 	// Wait for process to be stopped by user
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	log.Println("Waiting forever for SIGINT OR SIGTERM")
+	log.Println("INFO Waiting forever for SIGINT OR SIGTERM")
 	s := <-sig
-	log.Printf("Signal (%s) received, stopping\n", s)
+	log.Printf("INFO Signal (%s) received, stopping\n", s)
 }
