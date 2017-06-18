@@ -1,0 +1,16 @@
+{
+  "id": "default",
+  "patterns": [
+    "."
+  ],
+  "listeners": [
+    {
+      "net": "tcp",
+      "address": "0.0.0.0:5350"
+    },
+    {
+      "net": "udp",
+      "address": "0.0.0.0:5350"
+    }
+  ]
+}
