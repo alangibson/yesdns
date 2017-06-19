@@ -7,3 +7,4 @@ bin/
 yesdns.log
 *.crt
 *.key
+*.iml

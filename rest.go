@@ -15,17 +15,17 @@ import (
 //
 
 type DnsHeader struct {
-	Id                 uint16
-	Response           bool
-	Opcode             int
-	Authoritative      bool
-	Truncated          bool
-	RecursionDesired   bool
-	RecursionAvailable bool
-	Zero               bool
-	AuthenticatedData  bool
-	CheckingDisabled   bool
-	Rcode              int
+	// Id                 uint16    `json:"id"`
+	// Response           bool      `json:"response"`
+	// Opcode             int       `json:"opcode"`
+	// RecursionDesired   bool      `json:"recursion_desired"`
+	Authoritative      bool      `json:"authoritative"`
+	Truncated          bool      `json:"truncated"`
+	RecursionAvailable bool      `json:"recursion_available"`
+	Zero               bool      `json:"zero"`
+	AuthenticatedData  bool      `json:"authenticated_data"`
+	CheckingDisabled   bool      `json:"checking_disabled"`
+	Rcode              int       `json:"rcode"`
 }
 
 type DnsRR struct {
@@ -43,12 +43,12 @@ type DnsQuestion struct {
 }
 
 type DnsMessage struct {
-	Resolvers  []string			`json:"resolvers"`
-	MsgHdr     DnsHeader		`json:"msg_hdr"`
+	Resolvers  []string		`json:"resolvers"`
+	MsgHdr     DnsHeader		`json:"header"`
 	Question   []DnsQuestion	`json:"question"`
-	Answer     []DnsRR			`json:"answer"`
-	Ns         []DnsRR			`json:"ns"`
-	Extra      []DnsRR			`json:"extra"`
+	Answer     []DnsRR		`json:"answer"`
+	Ns         []DnsRR		`json:"ns"`
+	Extra      []DnsRR		`json:"extra"`
 }
 
 // Runs REST API HTTP server forever.

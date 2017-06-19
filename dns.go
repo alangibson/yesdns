@@ -16,31 +16,56 @@ import (
 func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolver *Resolver) *dns.Msg {
 	queryDomain := requestDnsMsg.Question[0].Name
 	qtype := requestDnsMsg.Question[0].Qtype
-	log.Printf("DEBUG Received query type %s for domain %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
-
-	// Initialize response message and set header flags
-	returnDnsMsg := new(dns.Msg)
-	// TODO m.Compress = *compress ?
-	// Build up response message Header
-	returnDnsMsg.Id = requestDnsMsg.Id
-	returnDnsMsg.RecursionDesired = requestDnsMsg.RecursionDesired // Copy rd bit
-	returnDnsMsg.Opcode = requestDnsMsg.Opcode
-	returnDnsMsg.RecursionAvailable = false
-	returnDnsMsg.Response = true
+	log.Printf("DEBUG Received query type %s name %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
 
 	// Try to resolve query and set status
 	err, resolvedDnsMessage := resolver.Resolve(qtype, queryDomain)
 	if err != nil {
 		// Lookup failed
-		returnDnsMsg.Rcode = dns.RcodeServerFailure
-		return returnDnsMsg
+		return &dns.Msg{
+			Compress: false,
+			MsgHdr: dns.MsgHdr{
+				Id: requestDnsMsg.Id,
+				Opcode: requestDnsMsg.Opcode,
+				RecursionDesired: requestDnsMsg.RecursionDesired,
+				Rcode: dns.RcodeServerFailure,
+				RecursionAvailable: false,
+				Response: true,
+				Authoritative: false,
+			},
+		}
 	} else if resolvedDnsMessage == nil {
 		// Lookup did not error, but nothing found
-		returnDnsMsg.Rcode = dns.RcodeNameError // aka NXDomain
-		return returnDnsMsg
+		return &dns.Msg{
+			Compress: false,
+			MsgHdr: dns.MsgHdr{
+				Id: requestDnsMsg.Id,
+				Opcode: requestDnsMsg.Opcode,
+				RecursionDesired: requestDnsMsg.RecursionDesired,
+				Rcode: dns.RcodeNameError, // aka NXDomain
+				RecursionAvailable: false,
+				Response: true,
+				Authoritative: false,
+			},
+		}
 	} // else: lookup did not error and answer found
-	returnDnsMsg.Rcode = dns.RcodeSuccess
-	
+
+	returnDnsMsg := new(dns.Msg)
+	returnDnsMsg.Compress 		= false
+	returnDnsMsg.Id 		= requestDnsMsg.Id
+	returnDnsMsg.RecursionDesired 	= requestDnsMsg.RecursionDesired
+	returnDnsMsg.Opcode 		= requestDnsMsg.Opcode
+	returnDnsMsg.Response 		= true						// QR, Query/Response. 1 bit. 0=Query, 1=Response
+	// go's 'zero value' for int is 0, which == rcode 0 (NoError)
+	returnDnsMsg.Rcode 		= resolvedDnsMessage.MsgHdr.Rcode
+	// go's 'zero value' for boolean is false, so these all default to false if not supplied in json
+	returnDnsMsg.RecursionAvailable = resolvedDnsMessage.MsgHdr.RecursionAvailable
+	returnDnsMsg.Authoritative 	= resolvedDnsMessage.MsgHdr.Authoritative	// AA, Authoritative Answer. 1 bit. 0=Not authoritative, 1=Is authoritative
+	returnDnsMsg.Truncated 		= resolvedDnsMessage.MsgHdr.Truncated		// TC, Truncated. 1 bit. 0=Not truncated, 1=Message truncated
+	returnDnsMsg.Zero 		= resolvedDnsMessage.MsgHdr.Zero
+	returnDnsMsg.AuthenticatedData 	= resolvedDnsMessage.MsgHdr.AuthenticatedData	// AD, Authenticated data. 1 bit. All data in the response has been cryptographically verified or otherwise meets the server's local security policy.
+	returnDnsMsg.CheckingDisabled 	= resolvedDnsMessage.MsgHdr.CheckingDisabled	// CD, Checking Disabled. 1 bit.
+
 	// Build response Question section
 	for _, questionSection := range resolvedDnsMessage.Question {
 		dnsQuestion := dns.Question{Name: questionSection.Qname, Qtype: questionSection.Qtype, Qclass: questionSection.Qclass}
