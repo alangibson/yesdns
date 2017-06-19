@@ -2,6 +2,9 @@
   "resolvers": [
     "default"
   ],
+  "header": {
+      "authoritative": true
+  },
   "question": [
     {
       "qname": "4.3.2.1.in-addr.arpa.",

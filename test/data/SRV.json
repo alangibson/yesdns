@@ -2,6 +2,9 @@
   "resolvers": [
     "default"
   ],
+  "header": {
+      "authoritative": true
+  },
   "question": [
     {
       "qname": "_http._tcp.some.domain.",

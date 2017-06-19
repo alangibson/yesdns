@@ -81,14 +81,16 @@ Caveats
 
 - No REST API security (yet)
 - Only supports Question OpCode (for now)
+- Only supports IN Qclass (for now)
 - Wildcards are not RFC4592 compliant, and only partially RFC1034 compliant
   - i.e. A.X.COM is matched by *.X.COM, but not *.A.X.COM
 - Only supports 1 question per message, [like everyone else](https://stackoverflow.com/questions/4082081/requesting-a-and-aaaa-records-in-single-dns-query).
+- User cannot set the following response header fields: Id, RecursionDesired, Opcode, Response, RecursionAvailable
 - No recursion support
 - No DNSSEC support
 - No zone transfer support
 - No Dynamic Update (RFC2136) support
-- No caching
+- No caching 
 
 References
 ----------

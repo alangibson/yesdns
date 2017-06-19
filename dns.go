@@ -50,22 +50,26 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		}
 	} // else: lookup did not error and answer found
 
-	returnDnsMsg := new(dns.Msg)
-	returnDnsMsg.Compress 		= false
-	returnDnsMsg.Id 		= requestDnsMsg.Id
-	returnDnsMsg.RecursionDesired 	= requestDnsMsg.RecursionDesired
-	returnDnsMsg.Opcode 		= requestDnsMsg.Opcode
-	returnDnsMsg.Response 		= true						// QR, Query/Response. 1 bit. 0=Query, 1=Response
-	// go's 'zero value' for int is 0, which == rcode 0 (NoError)
-	returnDnsMsg.Rcode 		= resolvedDnsMessage.MsgHdr.Rcode
-	// go's 'zero value' for boolean is false, so these all default to false if not supplied in json
-	returnDnsMsg.RecursionAvailable = resolvedDnsMessage.MsgHdr.RecursionAvailable
-	returnDnsMsg.Authoritative 	= resolvedDnsMessage.MsgHdr.Authoritative	// AA, Authoritative Answer. 1 bit. 0=Not authoritative, 1=Is authoritative
-	returnDnsMsg.Truncated 		= resolvedDnsMessage.MsgHdr.Truncated		// TC, Truncated. 1 bit. 0=Not truncated, 1=Message truncated
-	returnDnsMsg.Zero 		= resolvedDnsMessage.MsgHdr.Zero
-	returnDnsMsg.AuthenticatedData 	= resolvedDnsMessage.MsgHdr.AuthenticatedData	// AD, Authenticated data. 1 bit. All data in the response has been cryptographically verified or otherwise meets the server's local security policy.
-	returnDnsMsg.CheckingDisabled 	= resolvedDnsMessage.MsgHdr.CheckingDisabled	// CD, Checking Disabled. 1 bit.
-
+	returnDnsMsg := &dns.Msg{
+		Compress: false,
+		MsgHdr: dns.MsgHdr{
+			Id: requestDnsMsg.Id,
+			RecursionDesired: requestDnsMsg.RecursionDesired,
+			Opcode: requestDnsMsg.Opcode,
+			Response: true, 												// QR, Query/Response. 1 bit. 0=Query, 1=Response
+			// go's 'zero value' for int is 0, which == rcode 0 (NoError)
+			Rcode: resolvedDnsMessage.MsgHdr.Rcode,
+			// go's 'zero value' for boolean is false, so these all default to false if not supplied in json
+			RecursionAvailable: resolvedDnsMessage.MsgHdr.RecursionAvailable,
+			Authoritative: resolvedDnsMessage.MsgHdr.Authoritative,			// AA, Authoritative Answer. 1 bit. 0=Not authoritative, 1=Is authoritative
+			Truncated: resolvedDnsMessage.MsgHdr.Truncated, 				// TC, Truncated. 1 bit. 0=Not truncated, 1=Message truncated
+			Zero: resolvedDnsMessage.MsgHdr.Zero,
+			AuthenticatedData: resolvedDnsMessage.MsgHdr.AuthenticatedData, // AD, Authenticated data. 1 bit. All data in the response has been cryptographically verified or otherwise meets the server's local security policy.
+			CheckingDisabled: resolvedDnsMessage.MsgHdr.CheckingDisabled, 	// CD, Checking Disabled. 1 bit.
+		},
+	}
+	
+	
 	// Build response Question section
 	for _, questionSection := range resolvedDnsMessage.Question {
 		dnsQuestion := dns.Question{Name: questionSection.Qname, Qtype: questionSection.Qtype, Qclass: questionSection.Qclass}

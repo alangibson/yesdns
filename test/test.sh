@@ -51,19 +51,27 @@ trap tear_down EXIT
 
 assert_exit_ok() {
   if [ $1 -ne 0 ]; then
-    echo "assert_exit_ok failed. Aborting."
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "!! assert_exit_ok failed. Aborting. !!"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     exit 1
   else
-    echo "assert_exit_ok passed."
+    echo "----------------------------"
+    echo "-- assert_exit_ok passed. --"
+    echo "----------------------------"
   fi
 }
 
 assert_exit_nok() {
   if [ $1 -eq 0 ]; then
-    echo "assert_exit_nok failed. Aborting."
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    echo "!! assert_exit_nok failed. Aborting. !!"
+    echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     exit 1
   else
-    echo "assert_exit_n ok passed."
+    echo "-----------------------------"
+    echo "-- assert_exit_nok passed. --"
+    echo "-----------------------------"
   fi
 }
 
@@ -97,11 +105,27 @@ curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
 assert_dig_ok @localhost 8056 hostname.example. A
 
 echo //////////////////////////////////////////////////////////////////////////
+echo // Test Authoritative A Record
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
+dig @localhost -p 8056 hostname.example. A | grep 'flags:.*aa.*;'
+assert_exit_ok $?
+
+echo //////////////////////////////////////////////////////////////////////////
 echo // Test SOA Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
 assert_dig_ok @localhost 8056 some.domain. SOA
+
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Authoritative SOA Record
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
+dig @localhost -p 8056 some.domain. SOA | grep 'flags:.*aa.*;'
+assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Wildcard Lookup
@@ -122,3 +146,13 @@ echo //////////////////////////////////////////////////////////////////////////
 start_yesdns_https
 yes | openssl s_client -showcerts -connect localhost:53443
 assert_exit_ok $?
+
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Forwarding with DNSMasq
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
+sudo docker run -d --name=yesdns-dnsmasq --net=host --cap-add=NET_ADMIN andyshinn/dnsmasq:2.76 -S '/example/127.0.1.1#8056' --log-facility=- --log-queries --port=5399
+assert_dig_ok @localhost 5399 hostname.example. A
+sudo docker logs yesdns-dnsmasq
+sudo docker rm -f yesdns-dnsmasq
