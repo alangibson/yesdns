@@ -11,7 +11,7 @@ type Forwarder struct {
 }
 
 func (forwarder Forwarder) Forward(dnsMsg *dns.Msg) (error, *dns.Msg) {
-	log.Printf("DEBUG Sending DNS message %s to forward %s\n", dnsMsg, forwarder)
+	log.Printf("DEBUG Querying forward %s with DNS message %s\n", forwarder, dnsMsg)
 	dnsClient := dns.Client{}
 	responsDnsMsg, _, err := dnsClient.Exchange(dnsMsg, forwarder.Address)
 	if err != nil {

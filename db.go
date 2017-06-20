@@ -84,8 +84,11 @@ func (d *Database) ReadAllResolvers() (error, []*Resolver) {
 
 func (d Database) DeleteDnsMessage(dnsRecord DnsMessage) error {
 	log.Printf("DEBUG Deleting DNS Record %s\n", dnsRecord)
-	question := dnsRecord.Question[0]
-	err := d.db.Delete(strconv.Itoa(int(question.Qtype)), question.Qname)
+	var err error
+	for _, resolverId := range dnsRecord.Resolvers {
+		key := resolverId + "/" + strconv.Itoa(int(dnsRecord.Question[0].Qtype))
+		err = d.db.Delete(key, dnsRecord.Question[0].Qname)
+	}
 	return err
 }
 

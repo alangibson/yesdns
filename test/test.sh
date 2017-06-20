@@ -83,6 +83,12 @@ assert_dig_ok() {
   assert_exit_ok $?
 }
 
+assert_dig_nok() {
+  dig $1 -p $2 $3 $4
+  dig +short $1 -p $2 $3 $4 | sed '/^;;/ d' | grep -v -e '^$' > /dev/null
+  assert_exit_nok $?
+}
+
 set_up
 
 echo //////////////////////////////////////////////////////////////////////////
@@ -128,6 +134,15 @@ curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380
 curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
 dig @localhost -p 8056 some.domain. SOA | grep 'flags:.*aa.*;'
 assert_exit_ok $?
+
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Delete DNS Record
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
+assert_dig_ok @localhost 8056 hostname.example. A
+curl -v -X DELETE -d@./test/data/A-default.json localhost:5380/v1/message
+assert_dig_nok @localhost 8056 hostname.example. A
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Wildcard Lookup
