@@ -1,6 +1,7 @@
 #!/bin/bash
 
 YESDNS_PID=0
+YESDNS_HTTPS_PID=0
 
 start_yesdns_http() {
   rm -fr db/
@@ -16,14 +17,15 @@ start_yesdns_https() {
   openssl ecparam -genkey -name secp384r1 -out server.key
   openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650 -subj "/C=US/ST=TX/L=Austin/O=YesDNS/CN=localhost"
   $GOPATH/bin/yesdns -http-listen=localhost:53443 -tls-cert-file=server.crt -tls-key-file=server.key >> yesdns.log 2>&1 &
-  YESDNS_PID=$!
-  echo YesDNS pid is $YESDNS_PID
+  YESDNS_HTTPS_PID=$!
+  echo YesDNS pid is $YESDNS_HTTPS_PID
   sleep 2
 }
 
 kill_yesdns() {
   echo Killing YesDNS with pid $YESDNS_PID
   kill $YESDNS_PID
+  kill $YESDNS_HTTPS_PID
 }
 
 set_up() {

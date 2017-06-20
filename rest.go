@@ -30,25 +30,25 @@ func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan 
 		// Handle method
 		if r.Method == http.MethodPut {
 			// TODO validate dnsRecord
-			log.Printf("Saving %s\n", dnsRecord)
+			log.Printf("DEBUG Saving %s\n", dnsRecord)
 			if err := database.WriteDnsMessage(dnsRecord); err != nil {
-				log.Printf("Error saving %s. Error was: %s\n", dnsRecord, err)
+				log.Printf("ERROR Error saving %s. Error was: %s\n", dnsRecord, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			// TODO return 204 No content
 		} else if r.Method == http.MethodDelete {
 			// TODO validate dnsRecord
+			log.Printf("DEBUG Deleting %s\n", dnsRecord)
 			if err := database.DeleteDnsMessage(dnsRecord); err != nil {
-				log.Printf("Error deleting %s. Error was: %s\n", dnsRecord, err)
+				log.Printf("ERROR Error deleting %s. Error was: %s\n", dnsRecord, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			// TODO Return 204 No Content
 		} else {
-			msg := fmt.Sprintf("Method %s not allowed for /v1/message\n", r.Method)
 			// TODO return json error message
-			http.Error(w, msg, http.StatusMethodNotAllowed)
+			http.Error(w, fmt.Sprintf("Method %s not allowed for /v1/message\n", r.Method), http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -64,25 +64,23 @@ func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan 
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		log.Printf("Marshalled resolver: %s\n", resolver)
 		if r.Method == http.MethodPut {
 			if err := database.WriteResolver(resolver); err != nil {
-				log.Printf("Error writing %s. Error was: %s\n", resolver, err)
+				log.Printf("ERROR Error writing %s. Error was: %s\n", resolver, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			reloadChannel <- true
 		} else if r.Method == http.MethodDelete {
 			if err := database.DeleteResolver(resolver); err != nil {
-				log.Printf("Error deleting %s. Error was: %s\n", resolver, err)
+				log.Printf("ERROR Error deleting %s. Error was: %s\n", resolver, err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			reloadChannel <- true
 		} else {
-			msg := fmt.Sprintf("Method %s not allowed for /v1/resolver\n", r.Method)
 			// TODO return json error message
-			http.Error(w, msg, http.StatusMethodNotAllowed)
+			http.Error(w, fmt.Sprintf("Method %s not allowed for /v1/resolver\n", r.Method), http.StatusMethodNotAllowed)
 		}
 	})
 

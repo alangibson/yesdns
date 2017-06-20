@@ -60,7 +60,7 @@ func addResolvers(runningResolvers map[string]ResolverState, db *Database, confi
 						keptListenerPatternKeys = append(keptListenerPatternKeys, listenerPatternKey(listener.Key(), configuredPattern))
 					} else {
 						// There is already a running dns.Server for this listener, so just add query handler.
-						log.Printf("INFO Adding pattern (%s) to running server %s\n",
+						log.Printf("DEBUG Adding pattern (%s) to running server %s\n",
 							configuredResolver.Patterns, runningDNSServer)
 						// Update handlers to serve configuredResolver.Pattern
 						for _, configuredPattern := range configuredResolver.Patterns {

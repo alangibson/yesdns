@@ -69,7 +69,7 @@ func (r Resolver) Forward(dnsMsg *dns.Msg) (error, *dns.Msg) {
 	var responsDnsMsg *dns.Msg
 	var exchangeErr error
 	for _, forwarder := range r.Forwarders {
-		log.Printf("DEBUG Sending DNS message %s to forward %s\n", dnsMsg, forwarder)
+		log.Printf("DEBUG Sending DNS message %s to forwarder %s\n", dnsMsg, forwarder)
 		exchangeErr, responsDnsMsg = forwarder.Forward(dnsMsg)
 		// Interpret return code to see if we should go to next forward
 		if responsDnsMsg.Rcode == dns.RcodeSuccess {

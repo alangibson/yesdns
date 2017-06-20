@@ -29,7 +29,6 @@ func NewDatabase(scribbleDbDir string) (error, *Database) {
 
 func (d Database) WriteDnsMessage(dnsRecord DnsMessage) error {
 	log.Printf("DEBUG Saving %s to db\n", dnsRecord)
-
 	// We create records for every resolver
 	for _, resolverId := range dnsRecord.Resolvers {
 		// We have 1 document in the db for every entry in Question section

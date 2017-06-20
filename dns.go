@@ -9,14 +9,19 @@ import (
 	"log"
 	"net"
 	"time"
+	"fmt"
 )
+
+func dnsMsgToString(msg *dns.Msg) string {
+	return fmt.Sprintf("dns.Msg{opcode=%s recursion_desired=%s class=%s type=%s name=%s}",
+		msg.Opcode, msg.RecursionDesired, msg.Question[0].Qclass, msg.Question[0].Qtype, msg.Question[0].Name)
+}
 
 // Handles DNS Query operation (OpCode 0)
 // https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
 func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolver *Resolver) *dns.Msg {
 	queryDomain := requestDnsMsg.Question[0].Name
 	qtype := requestDnsMsg.Question[0].Qtype
-	log.Printf("DEBUG Received query type %s name %s. Question is %s\n", qtype, queryDomain, requestDnsMsg.Question)
 
 	// Try to resolve query and set status
 	err, resolvedDnsMessage := resolver.Resolve(qtype, queryDomain)
@@ -68,7 +73,6 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 			CheckingDisabled: resolvedDnsMessage.MsgHdr.CheckingDisabled, 	// CD, Checking Disabled. 1 bit.
 		},
 	}
-	
 	
 	// Build response Question section
 	for _, questionSection := range resolvedDnsMessage.Question {
@@ -195,16 +199,15 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
-		log.Printf("DEBUG Handling query with local addr (%s) network: %s\n",
-			dnsResponseWriter.LocalAddr(),
-			dnsResponseWriter.LocalAddr().Network())
-
+		log.Printf("DEBUG Received query with local addr %s network %s %s\n",
+			dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), dnsMsgToString(requestDnsMsg))
+		
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
 			// Try to find answer in our internal db
 			log.Printf("DEBUG Trying internal resolution\n")
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
-			log.Printf("DEBUG Rcode is %s\n", dnsMsg.Rcode)
+			log.Printf("DEBUG Internal resolution rcode is %s\n", dnsMsg.Rcode)
 			if dnsMsg.Rcode == dns.RcodeSuccess {
 				dnsResponseWriter.WriteMsg(dnsMsg)
 				return
@@ -212,11 +215,15 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 			// We did not succeed in internal lookup, so try forwarders
 			log.Printf("DEBUG Trying forwarders\n")
 			err, forwardDnsMsg := resolver.Forward(requestDnsMsg)
+			log.Printf("DEBUG Forward resolution rcode is %s\n", forwardDnsMsg.Rcode)
 			if err == nil && forwardDnsMsg != nil {
+				// Return successful forward resolution
+				log.Printf("DEBUG Forward resolution succeeded. Returning: %s\n", forwardDnsMsg)
 				dnsResponseWriter.WriteMsg(forwardDnsMsg)
 			} else {
 				// TODO is this correct behavior?
 				// Default to our (failed) internal lookup
+				log.Printf("DEBUG Forward resolution failed. Returning (failed) internal lookup: %s\n", dnsMsg)
 				dnsResponseWriter.WriteMsg(dnsMsg)
 			}
 		default:
