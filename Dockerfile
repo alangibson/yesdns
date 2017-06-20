@@ -5,9 +5,7 @@ ENV GOROOT=/usr/lib/go \
     GOBIN=/go/bin \
     PATH=$PATH:$GOROOT/bin:$GOBIN
 
-RUN
-  echo $SOURCE_BRANCH $SOURCE_URL && \
-  apk add -U git go libc-dev && \
+RUN apk add -U git go libc-dev && \
   mkdir -p $GOPATH/src/github.com/alangibson && \
   cd $GOPATH/src/github.com/alangibson && \
   git clone https://github.com/alangibson/yesdns.git && \
