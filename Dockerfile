@@ -6,7 +6,7 @@ ENV GOROOT=/usr/lib/go \
     PATH=$PATH:$GOROOT/bin:$GOBIN
 
 RUN
-  set && \
+  echo $SOURCE_BRANCH $SOURCE_URL && \
   apk add -U git go libc-dev && \
   mkdir -p $GOPATH/src/github.com/alangibson && \
   cd $GOPATH/src/github.com/alangibson && \
