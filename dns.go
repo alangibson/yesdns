@@ -215,12 +215,12 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 			// We did not succeed in internal lookup, so try forwarders
 			log.Printf("DEBUG Trying forwarders\n")
 			err, forwardDnsMsg := resolver.Forward(requestDnsMsg)
-			log.Printf("DEBUG Forward resolution rcode is %s\n", forwardDnsMsg.Rcode)
 			if err == nil && forwardDnsMsg != nil {
 				// Return successful forward resolution
-				log.Printf("DEBUG Forward resolution succeeded. Returning: %s\n", forwardDnsMsg)
+				log.Printf("DEBUG Forward resolution succeeded with rcode (%s). Returning: %s\n", forwardDnsMsg.Rcode, forwardDnsMsg)
 				dnsResponseWriter.WriteMsg(forwardDnsMsg)
 			} else {
+				// TODO separate log message for nil and not nil forwardDnsMsg
 				// TODO is this correct behavior?
 				// Default to our (failed) internal lookup
 				log.Printf("DEBUG Forward resolution failed. Returning (failed) internal lookup: %s\n", dnsMsg)
