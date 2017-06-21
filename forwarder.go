@@ -2,7 +2,6 @@ package yesdns
 
 import (
 	"github.com/miekg/dns"
-	"log"
 )
 
 type Forwarder struct {
@@ -12,7 +11,6 @@ type Forwarder struct {
 
 // Returns nil dns.Msg on hard error
 func (forwarder Forwarder) Forward(dnsMsg *dns.Msg) (error, *dns.Msg) {
-	log.Printf("DEBUG Querying forward %s with DNS message %s\n", forwarder, dnsMsg)
 	dnsClient := dns.Client{}
 	responsDnsMsg, _, err := dnsClient.Exchange(dnsMsg, forwarder.Address)
 	if err != nil {

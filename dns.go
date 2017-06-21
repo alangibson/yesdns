@@ -9,13 +9,7 @@ import (
 	"log"
 	"net"
 	"time"
-	"fmt"
 )
-
-func dnsMsgToString(msg *dns.Msg) string {
-	return fmt.Sprintf("dns.Msg{opcode=%s recursion_desired=%s class=%s type=%s name=%s}",
-		msg.Opcode, msg.RecursionDesired, msg.Question[0].Qclass, msg.Question[0].Qtype, msg.Question[0].Name)
-}
 
 // Handles DNS Query operation (OpCode 0)
 // https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
@@ -199,15 +193,15 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
-		log.Printf("DEBUG Received query with local addr %s network %s %s\n",
-			dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), dnsMsgToString(requestDnsMsg))
+		log.Printf("DEBUG Received query with local addr %s network %s \n%s\n",
+			dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), requestDnsMsg)
 		
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
 			// Try to find answer in our internal db
-			log.Printf("DEBUG Trying internal resolution\n")
+			log.Printf("DEBUG Trying internal resolution in data store %s\n", database)
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
-			log.Printf("DEBUG Internal resolution rcode is %s\n", dnsMsg.Rcode)
+			log.Printf("DEBUG Internal resolution Rcode is %s\n", dnsMsg.Rcode)
 			if dnsMsg.Rcode == dns.RcodeSuccess {
 				dnsResponseWriter.WriteMsg(dnsMsg)
 				return
@@ -217,13 +211,13 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 			err, forwardDnsMsg := resolver.Forward(requestDnsMsg)
 			if err == nil && forwardDnsMsg != nil {
 				// Return successful forward resolution
-				log.Printf("DEBUG Forward resolution succeeded with rcode (%s). Returning: %s\n", forwardDnsMsg.Rcode, forwardDnsMsg)
+				log.Printf("DEBUG Forward resolution succeeded with Rcode %s. Responding with message: \n%s\n", forwardDnsMsg.Rcode, forwardDnsMsg)
 				dnsResponseWriter.WriteMsg(forwardDnsMsg)
 			} else {
 				// TODO separate log message for nil and not nil forwardDnsMsg
 				// TODO is this correct behavior?
 				// Default to our (failed) internal lookup
-				log.Printf("DEBUG Forward resolution failed. Returning (failed) internal lookup: %s\n", dnsMsg)
+				log.Printf("DEBUG Forward resolution failed. Returning (failed) internal lookup: \n%s\n", dnsMsg)
 				dnsResponseWriter.WriteMsg(dnsMsg)
 			}
 		default:

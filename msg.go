@@ -1,5 +1,15 @@
 package yesdns
 
+import (
+    "github.com/miekg/dns"
+    "fmt"
+)
+
+func dnsMsgToString(msg *dns.Msg) string {
+	return fmt.Sprintf("dns.Msg{opcode=%s recursion_desired=%s class=%s type=%s name=%s}",
+		msg.Opcode, msg.RecursionDesired, msg.Question[0].Qclass, msg.Question[0].Qtype, msg.Question[0].Name)
+}
+
 // Internal representation of messages for REST API and database.
 
 type DnsHeader struct {

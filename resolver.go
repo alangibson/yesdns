@@ -69,10 +69,10 @@ func (r Resolver) Forward(dnsMsg *dns.Msg) (error, *dns.Msg) {
 	var responsDnsMsg *dns.Msg
 	var exchangeErr error
 	for _, forwarder := range r.Forwarders {
-		log.Printf("DEBUG Sending DNS message %s to forwarder %s\n", dnsMsg, forwarder)
+		log.Printf("DEBUG Querying forward %s with message \n%s\n", forwarder, dnsMsg)
 		if exchangeErr, responsDnsMsg = forwarder.Forward(dnsMsg); exchangeErr != nil {
 			// Hard error occured. Log a warning and (maybe) try other forwarders.
-			log.Printf("WARN Failed to query forwarder (%s %s). Error was: %s\n", forwarder.Net, forwarder.Address, exchangeErr)
+			log.Printf("WARN Failed to query forwarder %s. Error was: %s\n", forwarder, exchangeErr)
 		} else if responsDnsMsg.Rcode == dns.RcodeSuccess {
 			return nil, responsDnsMsg
 		} else if responsDnsMsg.Rcode == dns.RcodeNameError && responsDnsMsg.RecursionAvailable {
