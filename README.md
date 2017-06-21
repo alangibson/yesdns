@@ -90,6 +90,7 @@ Caveats
 - No DNSSEC support
 - No zone transfer support
 - No Dynamic Update (RFC2136) support
+- No DNS over TLS (RFC7858) support
 - No caching 
 
 References

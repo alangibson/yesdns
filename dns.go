@@ -193,16 +193,17 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
-		log.Printf("DEBUG Received query with local addr %s network %s \n%s\n",
+		log.Printf("DEBUG Received query with local addr %s network %s. Message is: \n%s\n",
 			dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), requestDnsMsg)
 		
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
 			// Try to find answer in our internal db
-			log.Printf("DEBUG Trying internal resolution in data store %s\n", database)
+			log.Printf("DEBUG Trying internal resolution\n")
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
 			log.Printf("DEBUG Internal resolution Rcode is %s\n", dnsMsg.Rcode)
 			if dnsMsg.Rcode == dns.RcodeSuccess {
+				log.Printf("DEBUG Internal resolution succeeded. Responding with message \n%s\n", dnsMsg)
 				dnsResponseWriter.WriteMsg(dnsMsg)
 				return
 			}
