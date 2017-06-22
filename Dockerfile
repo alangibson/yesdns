@@ -10,7 +10,7 @@ RUN apk add -U git go libc-dev && \
   cd $GOPATH/src/github.com/alangibson && \
   git clone https://github.com/alangibson/yesdns.git && \
   cd yesdns && \
-  git checkout development && \
+  git checkout master && \
   go get -v && \
   go install github.com/alangibson/yesdns/cmd/yesdns && \
   cp $GOBIN/yesdns /usr/local/bin/ && \
