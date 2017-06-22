@@ -195,13 +195,13 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 	}
 	// Build response Authority section
 	for _, rrSection := range resolvedDnsMessage.Ns {
-		if err := appendRR(&returnDnsMsg.Answer, &rrSection); err != nil {
+		if err := appendRR(&returnDnsMsg.Ns, &rrSection); err != nil {
 			log.Printf("WARN Cant build Authority section for type: %s.\n", rrSection.Type)
 		}
 	}
 	// Build response Extra section
 	for _, rrSection := range resolvedDnsMessage.Extra {
-		if err := appendRR(&returnDnsMsg.Answer, &rrSection); err != nil {
+		if err := appendRR(&returnDnsMsg.Extra, &rrSection); err != nil {
 			log.Printf("WARN Cant build Extra section for type: %s.\n", rrSection.Type)
 		}
 	}
