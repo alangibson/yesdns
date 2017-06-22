@@ -21,6 +21,8 @@ func appendRR(dnsMsgSection *[]dns.RR, rrSection *DnsRR) error {
 		appendAAAA(dnsMsgSection, rrSection)
 	case dns.TypeCNAME:
 		appendCNAME(dnsMsgSection, rrSection)
+	case dns.TypeMX:
+		appendMX(dnsMsgSection, rrSection)
 	case dns.TypeNS:
 		appendNS(dnsMsgSection, rrSection)
 	case dns.TypePTR:
@@ -60,6 +62,17 @@ func appendCNAME(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
 		&dns.CNAME{
 			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 			Target: rrSection.Rdata.(string),
+		},
+	)
+}
+
+func appendMX(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	rdataMap := rrSection.Rdata.(map[string]interface{})
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.MX{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Preference: uint16(rdataMap["preference"].(float64)),
+			Mx: rdataMap["mx"].(string),
 		},
 	)
 }

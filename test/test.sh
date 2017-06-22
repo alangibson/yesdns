@@ -121,6 +121,13 @@ dig @localhost -p 8056 hostname.example. A | grep 'flags:.*aa.*;'
 assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
+echo // Test MX Record
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/MX.json localhost:5380/v1/message
+assert_dig_ok @localhost 8056 example.com. MX
+
+echo //////////////////////////////////////////////////////////////////////////
 echo // Test SOA Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
