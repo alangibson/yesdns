@@ -9,7 +9,121 @@ import (
 	"log"
 	"net"
 	"time"
+	"errors"
+	"fmt"
 )
+
+func appendRR(dnsMsgSection *[]dns.RR, rrSection *DnsRR) error {
+	switch rrSection.Type {
+	case dns.TypeA:
+		appendA(dnsMsgSection, rrSection)
+	case dns.TypeAAAA:
+		appendAAAA(dnsMsgSection, rrSection)
+	case dns.TypeCNAME:
+		appendCNAME(dnsMsgSection, rrSection)
+	case dns.TypeNS:
+		appendNS(dnsMsgSection, rrSection)
+	case dns.TypePTR:
+		appendPTR(dnsMsgSection, rrSection)
+	case dns.TypeSOA:
+		appendSOA(dnsMsgSection, rrSection)
+	case dns.TypeSRV:
+		appendSRV(dnsMsgSection, rrSection)
+	case dns.TypeTXT:
+		appendTXT(dnsMsgSection, rrSection)
+	default:
+		return errors.New(fmt.Sprintf("Don't know how to build RR for type %s", rrSection.Type))
+	}
+	return nil
+}
+
+func appendA(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.A{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			A: net.ParseIP(rrSection.Rdata.(string)),
+		},
+	)
+}
+
+func appendAAAA(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.AAAA{
+			Hdr:  dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			AAAA: net.ParseIP(rrSection.Rdata.(string)),
+		},
+	)
+}
+
+func appendCNAME(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.CNAME{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Target: rrSection.Rdata.(string),
+		},
+	)
+}
+
+func appendNS(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.NS{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Ns: rrSection.Rdata.(string),
+		},
+	)
+}
+
+func appendPTR(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.PTR{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Ptr: rrSection.Rdata.(string),
+		},
+	)
+}
+
+func appendSOA(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	rdataMap := rrSection.Rdata.(map[string]interface{})
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.SOA{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Ns: rdataMap["ns"].(string),
+			Mbox: rdataMap["mbox"].(string),
+			Serial: uint32(rdataMap["serial"].(float64)),
+			Refresh: uint32(rdataMap["refresh"].(float64)),
+			Retry: uint32(rdataMap["retry"].(float64)),
+			Expire: uint32(rdataMap["expire"].(float64)),
+			Minttl: uint32(rdataMap["minttl"].(float64)),
+		},
+	)
+}
+
+func appendSRV(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	rdataMap := rrSection.Rdata.(map[string]interface{})
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.SRV{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Priority: uint16(rdataMap["priority"].(float64)),
+			Weight: uint16(rdataMap["weight"].(float64)),
+			Port: uint16(rdataMap["port"].(float64)),
+			Target: rdataMap["target"].(string),
+		},
+	)
+}
+
+func appendTXT(dnsMsgSection *[]dns.RR, rrSection *DnsRR) {
+	// Convert rdata to slice of string
+	txtLines := make([]string, len(rrSection.Rdata.([]interface{})))
+	for _, line := range rrSection.Rdata.([]interface{}) {
+		txtLines = append(txtLines, line.(string))
+	}
+	*dnsMsgSection = append(*dnsMsgSection,
+		&dns.TXT{
+			Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+			Txt: txtLines,
+		},
+	)
+}
 
 // Handles DNS Query operation (OpCode 0)
 // https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
@@ -75,105 +189,19 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 	}
 	// Build response Answer section
 	for _, rrSection := range resolvedDnsMessage.Answer {
-		switch rrSection.Type {
-		case dns.TypeA:
-			dnsRR := &dns.A{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				A: net.ParseIP(rrSection.Rdata.(string)),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeAAAA:
-			dnsRR := &dns.AAAA{
-				Hdr:  dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				AAAA: net.ParseIP(rrSection.Rdata.(string)),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeCNAME:
-			dnsRR := &dns.CNAME{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Target: rrSection.Rdata.(string),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeNS:
-			dnsRR := &dns.NS{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Ns: rrSection.Rdata.(string),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypePTR:
-			dnsRR := &dns.PTR{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Ptr: rrSection.Rdata.(string),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeSOA:
-			rdataMap := rrSection.Rdata.(map[string]interface{})
-			dnsRR := &dns.SOA{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Ns: rdataMap["ns"].(string),
-				Mbox: rdataMap["mbox"].(string),
-				Serial: uint32(rdataMap["serial"].(float64)),
-				Refresh: uint32(rdataMap["refresh"].(float64)),
-				Retry: uint32(rdataMap["retry"].(float64)),
-				Expire: uint32(rdataMap["expire"].(float64)),
-				Minttl: uint32(rdataMap["minttl"].(float64)),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeSRV:
-			rdataMap := rrSection.Rdata.(map[string]interface{})
-			dnsRR := &dns.SRV{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Priority: uint16(rdataMap["priority"].(float64)),
-				Weight: uint16(rdataMap["weight"].(float64)),
-				Port: uint16(rdataMap["port"].(float64)),
-				Target: rdataMap["target"].(string),
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
-		case dns.TypeTXT:
-			// Convert rdata to slice of string
-			txtLines := make([]string, len(rrSection.Rdata.([]interface{})))
-			for _, line := range rrSection.Rdata.([]interface{}) {
-				txtLines = append(txtLines, line.(string))
-			}
-			dnsTXT := &dns.TXT{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Txt: txtLines,
-			}
-			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsTXT)
-			// TODO? dnsMsg.Extra = append(dnsMsg.Extra, dnsRR)
-		default:
+		if err := appendRR(&returnDnsMsg.Answer, &rrSection); err != nil {
 			log.Printf("WARN Cant build Answer section for type: %s.\n", rrSection.Type)
-			// TODO return error to client?
 		}
 	}
 	// Build response Authority section
 	for _, rrSection := range resolvedDnsMessage.Ns {
-		switch rrSection.Type {
-		case dns.TypeNS:
-			dnsRR := &dns.NS{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Ns: rrSection.Rdata.(string),
-			}
-			returnDnsMsg.Ns = append(returnDnsMsg.Ns, dnsRR)
-		default:
+		if err := appendRR(&returnDnsMsg.Answer, &rrSection); err != nil {
 			log.Printf("WARN Cant build Authority section for type: %s.\n", rrSection.Type)
 		}
 	}
 	// Build response Extra section
 	for _, rrSection := range resolvedDnsMessage.Extra {
-		switch rrSection.Type {
-		case dns.TypeTXT:
-			// Convert rdata to slice of string
-			txtLines := make([]string, len(rrSection.Rdata.([]interface{})))
-			for _, line := range rrSection.Rdata.([]interface{}) {
-				txtLines = append(txtLines, line.(string))
-			}
-			dnsRR := &dns.TXT{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
-				Txt: txtLines,
-			}
-			returnDnsMsg.Extra = append(returnDnsMsg.Extra, dnsRR)
-		default:
+		if err := appendRR(&returnDnsMsg.Answer, &rrSection); err != nil {
 			log.Printf("WARN Cant build Extra section for type: %s.\n", rrSection.Type)
 		}
 	}
