@@ -14,15 +14,6 @@ type ResolverStore struct {
 	Type 			string 	`json:"type"`
 }
 
-type ResolverListener struct {
-	Net 			string	`json:"net"`
-	Address			string	`json:"address"`
-}
-
-func (rl ResolverListener) Key() string {
-	return rl.Address + "-" + rl.Net
-}
-
 type Resolver struct {
 	Id 				string				`json:"id"`
 	Patterns 		[]string			`json:"patterns"`

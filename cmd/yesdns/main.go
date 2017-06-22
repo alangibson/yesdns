@@ -40,7 +40,7 @@ func main() {
 	reloadChannel := make(chan bool)
 	
 	// Start up resolver manager
-	go yesdns.SyncResolversWithDatabase(database, reloadChannel)
+	go yesdns.SyncServersWithDatabase(database, reloadChannel)
 
 	// Start up REST API
 	go yesdns.ServeRestApi(httpListen, database, reloadChannel, tlsCertFile, tlsKeyFile)
