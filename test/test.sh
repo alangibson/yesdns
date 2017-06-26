@@ -92,6 +92,16 @@ assert_dig_nok() {
 set_up
 
 echo //////////////////////////////////////////////////////////////////////////
+echo // Test Wildcard Lookup
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-wildcard.json localhost:5380/v1/message
+assert_dig_ok @localhost 8056 notreal.example.com. A
+# Make sure we correctly echo whatever hostname we were queried with
+dig @localhost -p 8056 notreal.example.com. A | grep '^notreal.example.com.'
+assert_exit_ok $?
+
+echo //////////////////////////////////////////////////////////////////////////
 echo // Test resolver startup
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:5380/v1/resolver
@@ -121,6 +131,13 @@ dig @localhost -p 8056 hostname.example. A | grep 'flags:.*aa.*;'
 assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
+echo // Test MX Record
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0:8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/MX.json localhost:5380/v1/message
+assert_dig_ok @localhost 8056 example.com. MX
+
+echo //////////////////////////////////////////////////////////////////////////
 echo // Test SOA Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
@@ -144,15 +161,7 @@ assert_dig_ok @localhost 8056 hostname.example. A
 curl -v -X DELETE -d@./test/data/A-default.json localhost:5380/v1/message
 assert_dig_nok @localhost 8056 hostname.example. A
 
-echo //////////////////////////////////////////////////////////////////////////
-echo // Test Wildcard Lookup
-echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
-curl -v -X PUT -d@./test/data/A-wildcard.json localhost:5380/v1/message
-assert_dig_ok @localhost 8056 notreal.example.com. A
-# Make sure we correctly echo whatever hostname we were queried with
-dig @localhost -p 8056 notreal.example.com. A | grep '^notreal.example.com.'
-assert_exit_ok $?
+
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Forwarding

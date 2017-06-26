@@ -1,0 +1,24 @@
+{
+  "resolvers": [
+    "default"
+  ],
+  "question": [
+    {
+      "qname": "example.com.",
+      "qtype": 15,
+      "qclass": 1
+    }
+  ],
+  "answer": [
+    {
+      "name": "example.com.",
+      "type": 15,
+      "class": 1,
+      "ttl": 0,
+      "rdata": {
+        "preference": 1,
+        "mx": "mail.example.com."
+      }
+    }
+  ]
+}
