@@ -7,14 +7,13 @@
   },
   "question": [
     {
-      "qname": "*.some.example.",
+      "qname": "*.example.com.",
       "qtype": 1,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "wildcard.some.example.",
       "type": 1,
       "class": 1,
       "ttl": 1,

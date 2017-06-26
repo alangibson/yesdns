@@ -17,6 +17,15 @@ func dnsMsgToString(msg *dns.Msg) string {
 		msg.Opcode, msg.RecursionDesired, msg.Question[0].Qclass, msg.Question[0].Qtype, msg.Question[0].Name)
 }
 
+// Special case for wildcards. This function lets us easily fall back to the original Qname for the RR Name if there
+// is no RR Name in the database. The RR Name can be null if the underlying record is for a wildcard lookup.
+func ensureName(rrName string, queryName string) string {
+	if rrName == "" {
+		return queryName
+	}
+	return rrName
+}
+
 // Handles DNS Query operation (OpCode 0)
 // https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml#dns-parameters-5
 func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg, resolver *Resolver) *dns.Msg {
@@ -84,38 +93,38 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		switch rrSection.Type {
 		case dns.TypeA:
 			dnsRR := &dns.A{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				A: net.ParseIP(rrSection.Rdata.(string)),
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeAAAA:
 			dnsRR := &dns.AAAA{
-				Hdr:  dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr:  dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				AAAA: net.ParseIP(rrSection.Rdata.(string)),
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeCNAME:
 			dnsRR := &dns.CNAME{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Target: rrSection.Rdata.(string),
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeNS:
 			dnsRR := &dns.NS{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ns: rrSection.Rdata.(string),
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypePTR:
 			dnsRR := &dns.PTR{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ptr: rrSection.Rdata.(string),
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsRR)
 		case dns.TypeSOA:
 			rdataMap := rrSection.Rdata.(map[string]interface{})
 			dnsRR := &dns.SOA{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ns: rdataMap["ns"].(string),
 				Mbox: rdataMap["mbox"].(string),
 				Serial: uint32(rdataMap["serial"].(float64)),
@@ -128,7 +137,7 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		case dns.TypeSRV:
 			rdataMap := rrSection.Rdata.(map[string]interface{})
 			dnsRR := &dns.SRV{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Priority: uint16(rdataMap["priority"].(float64)),
 				Weight: uint16(rdataMap["weight"].(float64)),
 				Port: uint16(rdataMap["port"].(float64)),
@@ -142,7 +151,7 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				txtLines = append(txtLines, line.(string))
 			}
 			dnsTXT := &dns.TXT{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Txt: txtLines,
 			}
 			returnDnsMsg.Answer = append(returnDnsMsg.Answer, dnsTXT)
@@ -157,7 +166,7 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 		switch rrSection.Type {
 		case dns.TypeNS:
 			dnsRR := &dns.NS{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Ns: rrSection.Rdata.(string),
 			}
 			returnDnsMsg.Ns = append(returnDnsMsg.Ns, dnsRR)
@@ -175,7 +184,7 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 				txtLines = append(txtLines, line.(string))
 			}
 			dnsRR := &dns.TXT{
-				Hdr: dns.RR_Header{Name: rrSection.Name, Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
+				Hdr: dns.RR_Header{Name: ensureName(rrSection.Name, queryDomain), Rrtype: rrSection.Type, Class: rrSection.Class, Ttl: rrSection.Ttl},
 				Txt: txtLines,
 			}
 			returnDnsMsg.Extra = append(returnDnsMsg.Extra, dnsRR)
