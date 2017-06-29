@@ -46,6 +46,10 @@ Run from source
     ;; WHEN: Thu Jun 29 10:39:23 CEST 2017
     ;; MSG SIZE  rcvd: 175
 
+Wildcard resolution
+
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A-wildcard.json" localhost:5380/v1/question
+    dig @localhost -p 8053 notreal.example.com. A
 
 Run with TLS
 
