@@ -6,11 +6,8 @@ ENV GOROOT=/usr/lib/go \
     PATH=$PATH:$GOROOT/bin:$GOBIN
 
 RUN apk add -U git go libc-dev && \
-  mkdir -p $GOPATH/src/github.com/alangibson && \
-  cd $GOPATH/src/github.com/alangibson && \
-  git clone https://github.com/alangibson/yesdns.git && \
-  cd yesdns && \
-  git checkout development && \
+  pwd && \
+  ls -la && \
   go get -v && \
   go install github.com/alangibson/yesdns/cmd/yesdns && \
   cp $GOBIN/yesdns /usr/local/bin/ && \
