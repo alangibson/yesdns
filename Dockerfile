@@ -6,6 +6,7 @@ ENV GOROOT=/usr/lib/go \
     PATH=$PATH:$GOROOT/bin:$GOBIN
 
 RUN apk add -U git go libc-dev && \
+  env && \
   pwd && \
   ls -la && \
   go get -v && \
