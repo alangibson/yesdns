@@ -24,6 +24,15 @@ type Resolver struct {
 	Database		*Database
 }
 
+// Special case for wildcards. This function lets us easily fall back to the original Qname for the RR Name if there
+// is no RR Name in the database. The RR Name can be null if the underlying record is for a wildcard lookup.
+func ensureName(rrName string, queryName string) string {
+	if rrName == "" {
+		return queryName
+	}
+	return rrName
+}
+
 // If an internal error occured (ie ServerFail), error will be set.
 // If name not found (ie NXDomain), DnsMessage will be null.
 //
@@ -50,6 +59,11 @@ func (r Resolver) Resolve(qType uint16, qName string) (error, *DnsMessage) {
 		// We found an answer, so return it
 		// but first, we have to fix the Qname
 		wildcardDnsMessage.Question[0].Qname = qName
+		// And fix RR Names
+		for i := range wildcardDnsMessage.Answer {
+			wildcardDnsMessage.Answer[i].Name = ensureName(wildcardDnsMessage.Answer[i].Name, qName)
+		}
+		// TODO do we need to do the above for Ns and Extra sections too?
 		return nil, wildcardDnsMessage
 	}
 	

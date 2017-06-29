@@ -7,26 +7,26 @@
   },
   "question": [
     {
-      "qname": "some.domain.",
+      "qname": "some.example.com.",
       "qtype": 5,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "some.domain.",
+      "name": "some.example.com.",
       "type": 5,
       "class": 1,
       "ttl": 10,
-      "rdata": "www.some.domain."
+      "rdata": "www.some.example.com."
     }
   ],
   "ns": [
     {
-      "name": "some.domain.",
+      "name": "some.example.com.",
       "type": 2,
       "class": 1,
-      "rdata": "ns1.some.domain."
+      "rdata": "ns1.some.example.com."
     }
   ]
 }

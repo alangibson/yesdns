@@ -7,14 +7,14 @@
   },
   "question": [
     {
-      "qname": "_http._tcp.some.domain.",
+      "qname": "_http._tcp.some.example.com.",
       "qtype": 33,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "_http._tcp.some.domain.",
+      "name": "_http._tcp.some.example.com.",
       "type": 33,
       "class": 1,
       "ttl": 10,
@@ -22,7 +22,7 @@
         "priority": 1,
         "weight": 1,
         "port": 80,
-        "target": "www.some.domain."
+        "target": "www.some.example.com."
       }
     }
   ]
