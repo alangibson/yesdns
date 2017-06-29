@@ -168,6 +168,16 @@ curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380
 assert_dig_ok @localhost 8056 www.google.com. A
 
 echo //////////////////////////////////////////////////////////////////////////
+echo // Test Forwarder Delete
+echo //////////////////////////////////////////////////////////////////////////
+# Add resolver with forwarder
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
+assert_dig_ok @localhost 8056 www.google.com. A
+# Remove forwarder from previous resolver
+jq 'del(.forwarders)' test/data/resolvers/default-0.0.0.0-8056.json | curl -v -X PUT -d@- localhost:5380/v1/resolver
+assert_dig_nok @localhost 8056 www.google.com. A
+
+echo //////////////////////////////////////////////////////////////////////////
 echo // Test TLS
 echo //////////////////////////////////////////////////////////////////////////
 start_yesdns_https

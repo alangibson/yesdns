@@ -25,7 +25,7 @@ func (s ServerState) HasPattern(pattern string) bool {
 
 // TODO support in rest api: go serveDns(listener.Net, listener.Address, tsigName, tsigSecret)
 // TODO should probably return a pointer
-func NewServer(db *Database, configuredResolver *Resolver, listener ResolverListener) ServerState {
+func NewServer(db *Database, configuredResolver *Resolver, listener ResolverListener) *ServerState {
 	// Each listener (protocol+interface+port combo) has its own ServeMux, and hence its
 	// own pattern name space.
 	var serveMux = dns.NewServeMux()
@@ -42,5 +42,5 @@ func NewServer(db *Database, configuredResolver *Resolver, listener ResolverList
 	shutdownChannel := make(chan int)
 	go serveDns(listener.Net, listener.Address, "", "", serveMux, shutdownChannel)
 	
-	return ServerState{ ShutdownChannel:shutdownChannel, ServeMux:serveMux, Patterns:configuredResolver.Patterns, Listener: listener, Resolver: configuredResolver }
+	return &ServerState{ ShutdownChannel:shutdownChannel, ServeMux:serveMux, Patterns:configuredResolver.Patterns, Listener: listener, Resolver: configuredResolver }
 }

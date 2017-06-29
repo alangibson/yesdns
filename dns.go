@@ -234,13 +234,13 @@ func queryOperation(database *Database, dnsResponseWriter dns.ResponseWriter, re
 func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 	return func (dnsResponseWriter dns.ResponseWriter, requestDnsMsg *dns.Msg) {
 
-		log.Printf("DEBUG Received query with local addr %s network %s. Message is: \n%s\n",
-			dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), requestDnsMsg)
+		log.Printf("DEBUG Received query for resolver '%s' on local addr %s network %s. Message is: \n%s\n",
+			resolver.Id, dnsResponseWriter.LocalAddr(), dnsResponseWriter.LocalAddr().Network(), requestDnsMsg)
 		
 		switch requestDnsMsg.Opcode {
 		case dns.OpcodeQuery:
 			// Try to find answer in our internal db
-			log.Printf("DEBUG Trying internal resolution\n")
+			log.Printf("DEBUG Trying internal resolution with resolver '%s'\n", resolver.Id)
 			dnsMsg := queryOperation(database, dnsResponseWriter, requestDnsMsg, resolver)
 			log.Printf("DEBUG Internal resolution Rcode is %s\n", dnsMsg.Rcode)
 			if dnsMsg.Rcode == dns.RcodeSuccess {
@@ -249,7 +249,7 @@ func handleDnsQuery(database *Database, resolver *Resolver) func (dnsResponseWri
 				return
 			}
 			// We did not succeed in internal lookup, so try forwarders
-			log.Printf("DEBUG Trying forwarders\n")
+			log.Printf("DEBUG Trying resolver '%s' forwarders: %s\n", resolver.Id, resolver.Forwarders)
 			err, forwardDnsMsg := resolver.Forward(requestDnsMsg)
 			if err == nil && forwardDnsMsg != nil {
 				// Return successful forward resolution

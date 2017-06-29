@@ -14,7 +14,7 @@ func listenerPatternKey(listenerKey string, pattern string) string {
 	return listenerKey + "-" + pattern
 }
 
-func addServers(runningServers map[string]ServerState, db *Database, configuredResolvers []*Resolver) []string {
+func addServers(runningServers map[string]*ServerState, db *Database, configuredResolvers []*Resolver) []string {
 	
 	// These are the listenerPatternKey() that we will keep running when done
 	var keptListenerPatternKeys []string
@@ -25,13 +25,21 @@ func addServers(runningServers map[string]ServerState, db *Database, configuredR
 		// Iterate over configured listeners in each resolver and possibly start new ones
 		for _, listener := range configuredResolver.Listeners {
 			
+			// Get the running DNS server that corresponds to the current configured listener
 			runningServer, ok := runningServers[listener.Key()]
-
-			// Update Resolver Forwarders of running DNS server
-			runningServer.Resolver = configuredResolver
 			
 			// This block ensures that there is a Server running for every resolver configured in the db
 			if ok { // Server is already running
+				
+				// Update running DNS server with fresh Forwarder config from the db
+				// NOTE: We can not currently do runningServer.Resolver = configuredResolver because handleDnsQuery
+				//       holds a reference to the original configuredResolver it was created with.
+				// 		 If we ever want to reload the entire Resolver config, we will need to pass a reference to
+				// 		 ServerState to handleDnsQuery callback.
+				log.Printf("DEBUG Forwarders for resolver %s listener %s were: %s, will be %s\n",
+					runningServer.Resolver.Id, listener.Key(), runningServer.Resolver.Forwarders, configuredResolver.Forwarders)
+				runningServer.Resolver.Forwarders = configuredResolver.Forwarders
+				
 				// Make sure there is a handler attached to each server/listener for each pattern.
 				for _, configuredPattern := range configuredResolver.Patterns {
 					// See if pattern has already been added to running server/listener.
@@ -76,7 +84,7 @@ func addServers(runningServers map[string]ServerState, db *Database, configuredR
 }
 
 // Uses global variable RunningDNSServers.
-func cleanUpServers(runningServers map[string]ServerState, keptListenerPatternKeys []string) {
+func cleanUpServers(runningServers map[string]*ServerState, keptListenerPatternKeys []string) {
 	// Stop all running DNS servers, or just remove patterns from them, that were not in configuration this time
 	for listenerKey, runningServer := range runningServers {
 		log.Printf("DEBUG Before removals, patterns are: %s\n", runningServer.Patterns)
@@ -126,13 +134,13 @@ func cleanUpServers(runningServers map[string]ServerState, keptListenerPatternKe
 func SyncServersWithDatabase(db *Database, reloadChannel chan bool) {
 	
 	// Holds state of all running DNS servers indexed by Listener.Key()
-	var runningServers = make(map[string]ServerState)
+	runningServers := make(map[string]*ServerState)
 	
 	for {
 		log.Printf("DEBUG Reloading DNS servers from database\n")
 		
 		if err, configuredResolvers := db.ReadAllResolvers(); err != nil {
-			log.Printf("WARN Could not load any resolvers. Error was: %s\n", err)
+			log.Printf("WARN Could not load any resolvers because: %s\n", err)
 		} else {
 			keptListenerPatternKeys := addServers(runningServers, db, configuredResolvers)
 			cleanUpServers(runningServers, keptListenerPatternKeys)
