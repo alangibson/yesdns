@@ -12,41 +12,44 @@ YesDNS does not yet implement any sort of security. DO NOT expose YesDNS to the 
 Usage
 -----
 
-Run
+Run from source
 
+    export GOPATH=/tmp/gopath
     go get github.com/alangibson/yesdns
     go install github.com/alangibson/yesdns/cmd/yesdns
     $GOPATH/bin/yesdns &
-    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/resolvers/default-0.0.0.0:53.json" localhost:5380/v1/message
-    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A.json" localhost:5380/v1/message
-    dig @localhost some.domain. A
-
-Output
-
-    ; <<>> DiG 9.10.3-P4-Ubuntu <<>> @localhost -p 8053 some.domain. A
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/resolvers/default-0.0.0.0-8053.json" localhost:5380/v1/resolver
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A.json" localhost:5380/v1/question
+    dig @localhost -p 8053 some.example.com A
+    ; <<>> DiG 9.10.3-P4-Ubuntu <<>> @localhost -p 8053 some.example.com A
     ; (1 server found)
     ;; global options: +cmd
     ;; Got answer:
-    ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 22578
-    ;; flags: qr rd; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
+    ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 53579
+    ;; flags: qr aa rd; QUERY: 1, ANSWER: 1, AUTHORITY: 1, ADDITIONAL: 1
     ;; WARNING: recursion requested but not available
-
+    
     ;; QUESTION SECTION:
-    ;some.domain.			IN	A
-
+    ;some.example.com.		IN	A
+    
     ;; ANSWER SECTION:
-    some.domain.		10	IN	A	1.2.3.4
-
+    some.example.com.	10	IN	A	1.2.3.4
+    
     ;; AUTHORITY SECTION:
-    some.domain.		0	IN	NS	ns1.some.domain.
-
+    some.example.com.	0	IN	NS	ns1.example.com.
+    
     ;; ADDITIONAL SECTION:
-    some.domain.		10	IN	TXT	"" "" "Text line 1 of 2" "Text line 2 of 2"
-
-    ;; Query time: 1 msec
+    some.example.com.	10	IN	TXT	"" "" "Text line 1 of 2" "Text line 2 of 2"
+    
+    ;; Query time: 0 msec
     ;; SERVER: 127.0.0.1#8053(127.0.0.1)
-    ;; WHEN: Mon Apr 17 18:57:51 CEST 2017
-    ;; MSG SIZE  rcvd: 155
+    ;; WHEN: Thu Jun 29 10:39:23 CEST 2017
+    ;; MSG SIZE  rcvd: 175
+
+Wildcard resolution
+
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A-wildcard.json" localhost:5380/v1/question
+    dig @localhost -p 8053 notreal.example.com. A
 
 Run with TLS
 
@@ -55,6 +58,10 @@ Run with TLS
     openssl req -new -x509 -sha256 -key server.key -out server.crt -days 3650 -subj "/C=US/ST=TX/L=Austin/O=YesDNS/CN=localhost"
 
     yesdns -http-listen=:53443 -tls-cert-file=server.crt -tls-key-file=server.key
+
+Run via Docker
+
+    docker run -d --name=yesdns -p 8053:8053/udp -p 8053:8053/tcp -p 5380:5380 alangibson/yesdns
 
 Testing
 -------
@@ -69,7 +76,8 @@ Resolution Algorithm
   - Return Answer if found
 - Otherwise, substitute wildcard (*) for leftmost element in Qname and repeat lookup
       Example: hostname.example.com. -> *.example.com.
-  - Return Answer if found
+  - Return Answer if found and Name field provided
+  - Return Answer with name set to Qname if found and Name field not provided
 - Return NxDomain if no Forward configured
 - Otherwise, send request to Forward if configured
   - If failure while forwarding, return ServFail

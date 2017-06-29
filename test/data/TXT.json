@@ -7,14 +7,14 @@
   },
   "question": [
     {
-      "qname": "some.domain.",
+      "qname": "some.example.com.",
       "qtype": 16,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "some.domain.",
+      "name": "some.example.com.",
       "type": 16,
       "class": 1,
       "ttl": 10,

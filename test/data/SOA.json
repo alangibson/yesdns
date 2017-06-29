@@ -7,20 +7,20 @@
   },
   "question": [
     {
-      "qname": "some.domain.",
+      "qname": "some.example.com.",
       "qtype": 6,
       "qclass": 1
     }
   ],
   "answer": [
     {
-      "name": "some.domain.",
+      "name": "some.example.com.",
       "type": 6,
       "class": 1,
       "ttl": 10,
       "rdata": {
-        "ns": "ns1.some.domain.",
-        "mbox": "hostname.some.domain.",
+        "ns": "ns1.some.example.com.",
+        "mbox": "hostname.some.example.com.",
         "serial": 1,
         "refresh": 1,
         "retry": 1,

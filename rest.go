@@ -15,7 +15,7 @@ import (
 // httpListenAddr: (string) interface and port to listen on
 // database: (*Database) Reference to local database that stores DNS records.
 func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan <- bool, tlsCertFile string, tlsKeyFile string) {
-	http.HandleFunc("/v1/message", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/v1/question", func(w http.ResponseWriter, r *http.Request) {
 		// Decode json
 		if r.Body == nil {
 			http.Error(w, "Empty body not allowed", http.StatusBadRequest)
@@ -48,7 +48,7 @@ func ServeRestApi(httpListenAddr string, database *Database, reloadChannel chan 
 			// TODO Return 204 No Content
 		} else {
 			// TODO return json error message
-			http.Error(w, fmt.Sprintf("Method %s not allowed for /v1/message\n", r.Method), http.StatusMethodNotAllowed)
+			http.Error(w, fmt.Sprintf("Method %s not allowed for /v1/question\n", r.Method), http.StatusMethodNotAllowed)
 		}
 	})
 
