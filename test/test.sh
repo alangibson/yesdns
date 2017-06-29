@@ -92,16 +92,6 @@ assert_dig_nok() {
 set_up
 
 echo //////////////////////////////////////////////////////////////////////////
-echo // Test Wildcard Lookup
-echo //////////////////////////////////////////////////////////////////////////
-curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
-curl -v -X PUT -d@./test/data/A-wildcard.json localhost:5380/v1/message
-assert_dig_ok @localhost 8056 notreal.example.com. A
-# Make sure we correctly echo whatever hostname we were queried with
-dig @localhost -p 8056 notreal.example.com. A | grep '^notreal.example.com.'
-assert_exit_ok $?
-
-echo //////////////////////////////////////////////////////////////////////////
 echo // Test resolver startup
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/resolver-0.0.0.0:8054.json localhost:5380/v1/resolver
@@ -120,14 +110,14 @@ echo // Test A Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
-assert_dig_ok @localhost 8056 hostname.example. A
+assert_dig_ok @localhost 8056 hostname.example.com. A
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Authoritative A Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
-dig @localhost -p 8056 hostname.example. A | grep 'flags:.*aa.*;'
+dig @localhost -p 8056 hostname.example.com. A | grep 'flags:.*aa.*;'
 assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
@@ -142,14 +132,14 @@ echo // Test SOA Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
-assert_dig_ok @localhost 8056 some.domain. SOA
+assert_dig_ok @localhost 8056 some.example.com. SOA
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Authoritative SOA Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/SOA.json localhost:5380/v1/message
-dig @localhost -p 8056 some.domain. SOA | grep 'flags:.*aa.*;'
+dig @localhost -p 8056 some.example.com. SOA | grep 'flags:.*aa.*;'
 assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
@@ -157,11 +147,19 @@ echo // Test Delete DNS Record
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
-assert_dig_ok @localhost 8056 hostname.example. A
+assert_dig_ok @localhost 8056 hostname.example.com. A
 curl -v -X DELETE -d@./test/data/A-default.json localhost:5380/v1/message
-assert_dig_nok @localhost 8056 hostname.example. A
+assert_dig_nok @localhost 8056 hostname.example.com. A
 
-
+echo //////////////////////////////////////////////////////////////////////////
+echo // Test Wildcard Lookup
+echo //////////////////////////////////////////////////////////////////////////
+curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
+curl -v -X PUT -d@./test/data/A-wildcard.json localhost:5380/v1/message
+assert_dig_ok @localhost 8056 notreal.example.com. A
+# Make sure we correctly echo whatever hostname we were queried with
+dig @localhost -p 8056 notreal.example.com. A | grep '^notreal.example.com.'
+assert_exit_ok $?
 
 echo //////////////////////////////////////////////////////////////////////////
 echo // Test Forwarding
@@ -181,7 +179,8 @@ echo // Test Forwarding with DNSMasq
 echo //////////////////////////////////////////////////////////////////////////
 curl -v -X PUT -d@./test/data/resolvers/default-0.0.0.0-8056.json localhost:5380/v1/resolver
 curl -v -X PUT -d@./test/data/A-default.json localhost:5380/v1/message
-sudo docker run -d --name=yesdns-dnsmasq --net=host --cap-add=NET_ADMIN andyshinn/dnsmasq:2.76 -S '/example/127.0.1.1#8056' --log-facility=- --log-queries --port=5399
-assert_dig_ok @localhost 5399 hostname.example. A
+sudo docker rm -f yesdns-dnsmasq
+sudo docker run -d --name=yesdns-dnsmasq --net=host --cap-add=NET_ADMIN andyshinn/dnsmasq:2.76 -S '/example.com/127.0.1.1#8056' --log-facility=- --log-queries --port=5399
+assert_dig_ok @localhost 5399 hostname.example.com. A
 sudo docker logs yesdns-dnsmasq
 sudo docker rm -f yesdns-dnsmasq

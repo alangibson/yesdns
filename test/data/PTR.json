@@ -14,11 +14,11 @@
   ],
   "answer": [
     {
-      "name": "some.domain.",
+      "name": "some.example.com.",
       "type": 12,
       "class": 1,
       "ttl": 10,
-      "rdata": "www.some.domain."
+      "rdata": "www.some.example.com."
     }
   ]
 }
