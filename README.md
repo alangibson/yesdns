@@ -19,7 +19,7 @@ Run from source
     go install github.com/alangibson/yesdns/cmd/yesdns
     $GOPATH/bin/yesdns &
     curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/resolvers/default-0.0.0.0-8053.json" localhost:5380/v1/resolver
-    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A.json" localhost:5380/v1/message
+    curl -v -X PUT -d@"$GOPATH/src/github.com/alangibson/yesdns/test/data/A.json" localhost:5380/v1/question
     dig @localhost -p 8053 some.example.com A
     ; <<>> DiG 9.10.3-P4-Ubuntu <<>> @localhost -p 8053 some.example.com A
     ; (1 server found)
